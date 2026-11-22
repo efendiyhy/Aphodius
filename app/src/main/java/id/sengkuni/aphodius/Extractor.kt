@@ -64,15 +64,22 @@ object Extractor {
             "https://cdn.syndication.twimg.com/tweet-result?id=$id&lang=en&token=${syndicationToken(id)}",
         )
         var reached = false
+        val merged = LinkedHashMap<String, VideoVariant>()
         for (src in sources) {
             try {
                 val body = httpGet(src, 12000)
                 reached = true
-                val v = parseVariants(body)
-                if (v.isNotEmpty()) return@withContext Result.success(v)
+                for (v in parseVariants(body)) merged.putIfAbsent(v.url.substringBefore('?'), v)
+                // cukup bila sudah ada >= 2 pilihan kualitas; jika tidak, coba sumber berikutnya untuk melengkapi
+                if (merged.values.count { !it.hls } >= 2) break
             } catch (e: Exception) {
                 if (e.message?.startsWith("HTTP") == true) reached = true
             }
+        }
+        if (merged.isNotEmpty()) {
+            val all = merged.values.toList()
+            val mp4 = all.filter { !it.hls }.sortedByDescending { it.pixels }
+            return@withContext Result.success(if (mp4.isNotEmpty()) mp4 else all)
         }
         Result.failure(
             Exception(if (reached) "Tweet ini tidak berisi video (atau sudah dihapus/privat)." else "Tidak bisa menghubungi server. Periksa koneksi internet.")
