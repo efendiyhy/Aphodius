@@ -139,7 +139,8 @@ fun EmptyState(s: AppState, text: String) {
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxWidth().padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text, color = C.Muted, textAlign = TextAlign.Center)
-        if (s.netError) Text("Tidak bisa memuat data terbaru.", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+        if (s.netError) Text("Gagal memuat data: ${s.lastError}", color = C.Muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+        else if (s.loaded && s.lastRefresh != 0L) Text("Data web terakhir dimuat: ${fmtTime(0).let { java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(s.lastRefresh)) }}", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
         Spacer(Modifier.height(14.dp))
         AButton(if (s.refreshing) "Memuat…" else "Muat ulang", Ic.Refresh, true) { scope.launch { s.refresh() } }
     }

@@ -12,7 +12,11 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-const val DATA_URL = "https://raw.githubusercontent.com/efendiyhy/ek-web/main/public/master-stream/data.json"
+// Repo ek-web bersifat private, jadi data dibaca dari situs publik (Firebase Hosting) yang di-deploy dari repo itu.
+val DATA_URLS = listOf(
+    "https://ekinstru.web.app/master-stream/data.json",
+    "https://ekinstru.firebaseapp.com/master-stream/data.json",
+)
 const val UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
 
 data class Film(
@@ -111,6 +115,7 @@ class AppState(ctx: Context) {
     var loaded by mutableStateOf(false)
     var refreshing by mutableStateOf(false)
     var netError by mutableStateOf(false)
+    var lastError by mutableStateOf("")
     var lastRefresh = 0L
     var favs by mutableStateOf(store.favs())
     val progress = mutableStateMapOf<String, Prog>().also { it.putAll(store.progress()) }
@@ -131,18 +136,30 @@ class AppState(ctx: Context) {
 
     fun loadCache() { store.cachedJson?.let { apply(it) } }
 
+    /** Ambil data terbaru dari web Master Stream. Mencoba beberapa alamat; hasil terakhir yang valid dipakai. */
     suspend fun refresh() {
         if (refreshing) return
         refreshing = true
+        var err = ""
         try {
-            val text = withContext(Dispatchers.IO) { httpGet("$DATA_URL?t=${System.currentTimeMillis()}") }
-            if (apply(text)) {
-                store.cachedJson = text
-                netError = false
-                lastRefresh = System.currentTimeMillis()
-            } else netError = true
-        } catch (e: Exception) {
+            val t = System.currentTimeMillis()
+            for (base in DATA_URLS) {
+                try {
+                    val text = withContext(Dispatchers.IO) { httpGet("$base?t=$t") }.trim()
+                    if (!text.startsWith("{")) { err = "Respons bukan JSON dari ${base.substringAfter("//").substringBefore("/")}"; continue }
+                    if (apply(text)) {
+                        store.cachedJson = text
+                        netError = false
+                        lastError = ""
+                        lastRefresh = System.currentTimeMillis()
+                        return
+                    } else err = "Format data tidak dikenali"
+                } catch (e: Exception) {
+                    err = "${base.substringAfter("//").substringBefore("/")}: ${e.message ?: e.javaClass.simpleName}"
+                }
+            }
             netError = true
+            lastError = err
         } finally {
             refreshing = false
         }

@@ -49,6 +49,10 @@ fun App(s: AppState) {
     LaunchedEffect(Unit) {
         s.loadCache()
         launch { s.refresh() }
+        launch {
+            // Terus ikuti perubahan dari web: cek ulang setiap 60 detik selama aplikasi terbuka
+            while (true) { delay(60_000); s.refresh() }
+        }
         delay(1300)
         if (!s.loaded) withTimeoutOrNull(6000) { snapshotFlow { s.loaded || s.netError }.first { it } }
         splash = false
@@ -58,7 +62,7 @@ fun App(s: AppState) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val o = LifecycleEventObserver { _, e ->
-            if (e == Lifecycle.Event.ON_RESUME && System.currentTimeMillis() - s.lastRefresh > 120_000 && s.lastRefresh != 0L) {
+            if (e == Lifecycle.Event.ON_RESUME && System.currentTimeMillis() - s.lastRefresh > 20_000) {
                 scope.launch { s.refresh() }
             }
         }
