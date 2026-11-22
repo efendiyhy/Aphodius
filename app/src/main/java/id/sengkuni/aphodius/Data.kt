@@ -202,7 +202,7 @@ class AppState(ctx: Context) {
     fun setQualityPref(q: Int) { quality = q; store.quality = q }
     fun setSpeedPref(s: Float) { speed = s; store.speed = s }
     fun setCropPref(c: Int) { cropTop = c; store.cropTop = c }
-    fun setNickname(n: String) { nickname = n.trim(); store.nickname = nickname }
+    fun saveNickname(n: String) { nickname = n.trim(); store.nickname = nickname }
     fun setBiometricPref(b: Boolean) { biometric = b; store.biometric = b }
 
     fun setPin(pin: String) {

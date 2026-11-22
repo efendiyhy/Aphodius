@@ -83,7 +83,7 @@ fun App(s: AppState) {
 
     if (splash) { SplashScreen(); return }
 
-    if (s.nickname.isBlank()) { OnboardingScreen { s.setNickname(it) }; return }
+    if (s.nickname.isBlank()) { OnboardingScreen { s.saveNickname(it) }; return }
     if (locked && s.lockEnabled) { LockScreen(s) { locked = false }; return }
 
     val top = stack.lastOrNull()

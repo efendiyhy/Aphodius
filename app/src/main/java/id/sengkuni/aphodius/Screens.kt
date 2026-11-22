@@ -474,7 +474,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
                     BasicTextField(name, { if (it.length <= 24) name = it }, singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp, textAlign = TextAlign.Center), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth())
                 }
                 Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    AButton("Simpan", null, true) { if (name.isNotBlank()) { s.setNickname(name); editName = false } }
+                    AButton("Simpan", null, true) { if (name.isNotBlank()) { s.saveNickname(name); editName = false } }
                     AButton("Batal", null, false) { name = s.nickname; editName = false }
                 }
             } else {
