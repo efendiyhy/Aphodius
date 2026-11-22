@@ -462,15 +462,15 @@ private fun PanelItem(text: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun CropEditor(initial: List<Float>, onSave: (List<Float>) -> Unit, onCancel: () -> Unit) {
     var ins by remember { mutableStateOf(initial) } // kiri, atas, kanan, bawah
-    var size by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(1, 1)) }
+    var box by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(1, 1)) }
     var edge by remember { mutableIntStateOf(-1) }
     val aqua = C.Aqua
-    Box(Modifier.fillMaxSize().onSizeChanged { size = it }) {
+    Box(Modifier.fillMaxSize().onSizeChanged { box = it }) {
         Canvas(
             Modifier.fillMaxSize().pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { o ->
-                        val w = size.width.toFloat(); val h = size.height.toFloat()
+                        val w = box.width.toFloat(); val h = box.height.toFloat()
                         val d = floatArrayOf(
                             kotlin.math.abs(o.x - ins[0] * w), kotlin.math.abs(o.y - ins[1] * h),
                             kotlin.math.abs(o.x - (1 - ins[2]) * w), kotlin.math.abs(o.y - (1 - ins[3]) * h),
@@ -483,7 +483,7 @@ private fun CropEditor(initial: List<Float>, onSave: (List<Float>) -> Unit, onCa
                 ) { change, drag ->
                     change.consume()
                     if (edge < 0) return@detectDragGestures
-                    val w = size.width.toFloat(); val h = size.height.toFloat()
+                    val w = box.width.toFloat(); val h = box.height.toFloat()
                     val n = ins.toMutableList()
                     val delta = when (edge) { 0 -> drag.x / w; 1 -> drag.y / h; 2 -> -drag.x / w; else -> -drag.y / h }
                     val limit = if (edge % 2 == 0) 0.9f - ins[if (edge == 0) 2 else 0] else 0.9f - ins[if (edge == 1) 3 else 1]
