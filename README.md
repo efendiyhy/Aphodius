@@ -1,7 +1,16 @@
-# Aphodius UI Kit
-Desain UI aplikasi streaming Android (tema biru laut) oleh SengkuniDeveloper.
-- portrait/ : 14 layar 360x800
-- landscape/ : 14 layar 800x360
-- 00-design-system.svg : warna, tipografi, tombol, ikon
-- preview.html : buka di browser untuk melihat semua
-SVG bisa diimpor ke Figma, Illustrator, atau Inkscape.
+# Aphodius
+
+Aplikasi streaming Android (tema biru laut) oleh SengkuniDeveloper.
+Memutar video dari koleksi link X (Twitter) yang disimpan di web **Master Stream**.
+
+## Cara kerja
+- Daftar film dibaca dari `data.json` Master Stream
+  (`efendiyhy/ek-web` → `public/master-stream/data.json`), diperbarui otomatis setiap aplikasi dibuka.
+- Link X diekstrak menjadi URL video langsung (`video.twimg.com`), lalu diputar penuh layar — tanpa tampilan X.
+- Pemutar: ketuk dua kali kiri/kanan = mundur/maju 10 dtk, geser vertikal kiri = kecerahan, kanan = suara,
+  pilih kualitas, kecepatan, rasio layar, lanjut menonton otomatis.
+
+## Build
+CI GitHub Actions (`.github/workflows/build.yml`) membangun APK. Rilis dibuat otomatis saat tag `vX.Y.Z` di-push.
+
+Folder `portrait/`, `landscape/`, `00-design-system.svg`, `preview.html` adalah desain UI kit.
