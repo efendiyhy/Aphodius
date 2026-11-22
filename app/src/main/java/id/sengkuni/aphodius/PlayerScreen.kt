@@ -50,6 +50,8 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -206,18 +208,25 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     var dragLeft by remember { mutableStateOf(true) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        AndroidView(
-            factory = { c ->
-                PlayerView(c).apply {
-                    useController = false
-                    this.player = player
-                    keepScreenOn = true
-                    setShutterBackgroundColor(android.graphics.Color.BLACK)
-                }
-            },
-            update = { it.resizeMode = resizeModes[resize].first },
-            modifier = Modifier.fillMaxSize(),
-        )
+        // Bagian atas video dipotong (cropTop %) untuk menyembunyikan iklan/banner di atas video.
+        Box(Modifier.fillMaxSize().clipToBounds()) {
+            AndroidView(
+                factory = { c ->
+                    (android.view.LayoutInflater.from(c).inflate(R.layout.player_view, null) as PlayerView).apply {
+                        useController = false
+                        this.player = player
+                        keepScreenOn = true
+                        setShutterBackgroundColor(android.graphics.Color.BLACK)
+                    }
+                },
+                update = { it.resizeMode = resizeModes[resize].first },
+                modifier = Modifier.layout { m, c ->
+                    val extra = (c.maxHeight * s.cropTop / 100f).toInt()
+                    val pl = m.measure(c.copy(minHeight = c.maxHeight + extra, maxHeight = c.maxHeight + extra))
+                    layout(c.maxWidth, c.maxHeight) { pl.place(0, -extra) }
+                },
+            )
+        }
 
         // Lapisan gestur: ketuk = tampil/sembunyi kontrol, ketuk dua kali = ±10 dtk, geser vertikal = kecerahan/suara
         Box(

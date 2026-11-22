@@ -16,3 +16,9 @@ CI GitHub Actions (`.github/workflows/build.yml`) membangun APK. Rilis dibuat ot
 Rilis baru: naikkan angka di `version.txt` lalu push ke `main` — CI membuat tag dan rilis otomatis.
 
 Folder `portrait/`, `landscape/`, `00-design-system.svg`, `preview.html` adalah desain UI kit.
+
+## v1.2.0
+- Nama sapaan saat pertama kali dipasang, profil lokal, dan kunci aplikasi (PIN 4 digit + sidik jari opsional).
+- Pemutar: bagian atas video dipotong (default 8%, bisa diatur 0–25% di Profil) untuk menyembunyikan iklan di atas video.
+- Menu bawah "Cari" diganti "Movie" (film dikelompokkan per genre); pencarian tetap ada lewat ikon di Beranda.
+- Pembaruan dalam aplikasi: banner info + unduh & pasang langsung dari rilis GitHub.

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Base64
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,7 +44,7 @@ import java.util.Date
 import java.util.Locale
 
 enum class Tab(val label: String, val icon: ImageVector) {
-    Home("Beranda", Ic.Home), New("Baru", Ic.Eps), Search("Cari", Ic.Search), MyList("Daftarku", Ic.Bookmark)
+    Home("Beranda", Ic.Home), New("Baru", Ic.Eps), Movie("Movie", Ic.Play), MyList("Daftarku", Ic.Bookmark)
 }
 
 private val gradients = listOf(
@@ -148,7 +149,7 @@ fun EmptyState(s: AppState, text: String) {
 
 /* ---------------- BERANDA ---------------- */
 @Composable
-fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSearch: () -> Unit) {
+fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSearch: () -> Unit, onProfile: () -> Unit) {
     val scope = rememberCoroutineScope()
     var picked by remember { mutableStateOf<String?>(null) }
     val land = LocalConfiguration.current.screenWidthDp > 600
@@ -158,10 +159,15 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 20.dp)) {
         item {
             Row(Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("APHODIUS", fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp, style = androidx.compose.ui.text.TextStyle(brush = C.Brand), modifier = Modifier.weight(1f))
+                Column(Modifier.weight(1f)) {
+                    Text("APHODIUS", fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp, style = androidx.compose.ui.text.TextStyle(brush = C.Brand))
+                    if (s.nickname.isNotBlank()) Text("Halo, ${s.nickname}", color = C.Muted, fontSize = 12.sp)
+                }
                 Icon(Ic.Refresh, "Muat ulang", tint = if (s.refreshing) C.Aqua else Color.White, modifier = Modifier.size(26.dp).clickable { scope.launch { s.refresh() } })
                 Spacer(Modifier.width(18.dp))
                 Icon(Ic.Search, "Cari", tint = Color.White, modifier = Modifier.size(26.dp).clickable { onSearch() })
+                Spacer(Modifier.width(16.dp))
+                Box(Modifier.clickable { onProfile() }) { Avatar(s.nickname, 32) }
             }
         }
         if (used.isNotEmpty()) item {
@@ -217,7 +223,7 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
 
 /* ---------------- CARI ---------------- */
 @Composable
-fun SearchScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit) {
+fun SearchScreen(s: AppState, onBack: () -> Unit, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit) {
     var q by remember { mutableStateOf("") }
     val list = remember(q, s.films) {
         val k = q.trim().lowercase()
@@ -228,6 +234,8 @@ fun SearchScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit) {
             Modifier.padding(16.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(C.Surface).padding(horizontal = 14.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Icon(Ic.Back, "Kembali", tint = Color.White, modifier = Modifier.size(22.dp).clickable { onBack() })
+            Spacer(Modifier.width(12.dp))
             Icon(Ic.Search, null, tint = C.Muted, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(10.dp))
             Box(Modifier.weight(1f)) {
@@ -367,4 +375,224 @@ fun fmtTime(ms: Long): String {
     val t = (ms / 1000).coerceAtLeast(0)
     val h = t / 3600; val m = (t % 3600) / 60; val sec = t % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%02d:%02d".format(m, sec)
+}
+
+/* ---------------- ONBOARDING ---------------- */
+@Composable
+fun OnboardingScreen(onDone: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0B4F7A), C.Navy))).statusBarsPadding().navigationBarsPadding().imePadding(), contentAlignment = Alignment.Center) {
+        Column(Modifier.padding(28.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(64.dp).border(3.dp, C.Aqua, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(Ic.PlayFill, null, tint = Color.White, modifier = Modifier.size(28.dp))
+            }
+            Spacer(Modifier.height(18.dp))
+            Text("Selamat datang di Aphodius", fontSize = 22.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text("Siapa nama sapaanmu?", color = C.Muted, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
+            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(C.Surface).padding(horizontal = 16.dp, vertical = 15.dp)) {
+                if (name.isEmpty()) Text("Nama sapaan", color = C.Muted)
+                BasicTextField(name, { if (it.length <= 24) name = it }, singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth())
+            }
+            Spacer(Modifier.height(16.dp))
+            val ok = name.isNotBlank()
+            Box(
+                Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(8.dp)).background(if (ok) C.Aqua else Color.White.copy(alpha = .15f)).clickable(enabled = ok) { onDone(name.trim()) },
+                contentAlignment = Alignment.Center,
+            ) { Text("MULAI", color = if (ok) Color.Black else C.Muted, fontWeight = FontWeight.Bold) }
+            Text("Profil hanya tersimpan di perangkat ini.", color = C.Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 14.dp))
+        }
+    }
+}
+
+/* ---------------- MOVIE (per genre) ---------------- */
+@Composable
+fun MovieScreen(s: AppState, onOpen: (Film) -> Unit) {
+    val groups = remember(s.films) {
+        s.films.flatMap { f -> f.genres.map { it to f } }.groupBy({ it.first }, { it.second }).toSortedMap()
+    }
+    val none = remember(s.films) { s.films.filter { it.genres.isEmpty() } }
+    LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(bottom = 20.dp)) {
+        item { Text("Movie", fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp)) }
+        if (s.films.isEmpty()) item { EmptyState(s, "Belum ada film.") }
+        groups.forEach { (g, list) ->
+            item(key = "g_$g") {
+                Row(Modifier.padding(start = 16.dp, top = 18.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(g, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("  ${list.size}", color = C.Muted, fontSize = 13.sp)
+                }
+                PosterRow(list, s, onOpen)
+            }
+        }
+        if (none.isNotEmpty()) item(key = "g_none") {
+            SectionTitle("Lainnya")
+            PosterRow(none, s, onOpen)
+        }
+    }
+}
+
+/* ---------------- PROFIL & PENGATURAN ---------------- */
+@Composable
+fun ProfileScreen(s: AppState, onBack: () -> Unit) {
+    val ctx = LocalContext.current
+    var editName by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf(s.nickname) }
+    var pinMode by remember { mutableStateOf<String?>(null) } // "set1","set2","off"
+    var firstPin by remember { mutableStateOf("") }
+    var err by remember { mutableStateOf("") }
+    var tick by remember { mutableIntStateOf(0) }
+
+    BackHandler { if (pinMode != null) pinMode = null else onBack() }
+
+    if (pinMode != null) {
+        Box(Modifier.fillMaxSize().background(C.Navy).statusBarsPadding().navigationBarsPadding(), contentAlignment = Alignment.Center) {
+            Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                val title = when (pinMode) { "set1" -> "Buat PIN"; "set2" -> "Ulangi PIN"; else -> "Masukkan PIN" }
+                val sub = when (pinMode) { "set1" -> "$PIN_LEN digit untuk mengunci aplikasi"; "set2" -> "Masukkan PIN yang sama"; else -> "Untuk mematikan kunci aplikasi" }
+                PinPad(title, sub, err, resetTick = tick) { pin ->
+                    when (pinMode) {
+                        "set1" -> { firstPin = pin; err = ""; pinMode = "set2"; tick++ }
+                        "set2" -> if (pin == firstPin) { s.setPin(pin); pinMode = null; err = "" } else { err = "PIN tidak sama, ulangi"; pinMode = "set1"; tick++ }
+                        else -> if (s.checkPin(pin)) { s.clearPin(); pinMode = null; err = "" } else { err = "PIN salah"; tick++ }
+                    }
+                }
+                Text("Batal", color = C.Aqua, modifier = Modifier.padding(top = 18.dp).clickable { pinMode = null; err = "" })
+            }
+        }
+        return
+    }
+
+    Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Ic.Back, "Kembali", tint = Color.White, modifier = Modifier.size(26.dp).clickable { onBack() })
+            Text("Profil", fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 14.dp))
+        }
+        Column(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Avatar(s.nickname, 84)
+            Spacer(Modifier.height(10.dp))
+            if (editName) {
+                Box(Modifier.width(240.dp).clip(RoundedCornerShape(10.dp)).background(C.Surface).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                    BasicTextField(name, { if (it.length <= 24) name = it }, singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp, textAlign = TextAlign.Center), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth())
+                }
+                Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    AButton("Simpan", null, true) { if (name.isNotBlank()) { s.setNickname(name); editName = false } }
+                    AButton("Batal", null, false) { name = s.nickname; editName = false }
+                }
+            } else {
+                Text(s.nickname, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Ubah nama sapaan", color = C.Aqua, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp).clickable { editName = true })
+            }
+        }
+
+        SettingHeader("Keamanan")
+        SettingRow("Kunci aplikasi", if (s.lockEnabled) "Aktif — PIN $PIN_LEN digit" else "Mati", s.lockEnabled) {
+            if (s.lockEnabled) { err = ""; pinMode = "off" } else { err = ""; pinMode = "set1" }
+        }
+        if (s.lockEnabled && biometricAvailable(ctx)) {
+            SettingRow("Buka dengan sidik jari", "Alternatif selain PIN", s.biometric) { s.setBiometricPref(!s.biometric) }
+        }
+
+        SettingHeader("Pemutar")
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text("Potong bagian atas video: ${s.cropTop}%", fontSize = 15.sp)
+            Text("Menyembunyikan iklan/banner yang menempel di atas video.", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 6.dp))
+            androidx.compose.material3.Slider(
+                value = s.cropTop.toFloat(), onValueChange = { s.setCropPref(it.toInt()) }, valueRange = 0f..25f, steps = 24,
+                colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = C.Aqua, activeTrackColor = C.Aqua),
+            )
+        }
+
+        SettingHeader("Tentang")
+        Text("Aphodius v${BuildConfig.VERSION_NAME}", color = C.Muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+        val u = s.update
+        if (u != null) UpdateCard(u, s, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        else {
+            var checking by remember { mutableStateOf(false) }
+            var msg by remember { mutableStateOf("") }
+            val scope = rememberCoroutineScope()
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                AButton(if (checking) "Memeriksa…" else "Cek pembaruan", Ic.Refresh, false) {
+                    if (!checking) scope.launch {
+                        checking = true; msg = ""
+                        val r = Updater.check(); s.update = r
+                        msg = if (r == null) "Kamu sudah memakai versi terbaru." else ""
+                        checking = false
+                    }
+                }
+                if (msg.isNotEmpty()) Text(msg, color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingHeader(t: String) =
+    Text(t.uppercase(), color = C.Aqua, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 6.dp))
+
+@Composable
+private fun SettingRow(title: String, sub: String, on: Boolean, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 15.sp)
+            Text(sub, color = C.Muted, fontSize = 12.sp)
+        }
+        androidx.compose.material3.Switch(
+            checked = on, onCheckedChange = null,
+            colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = C.Aqua, checkedThumbColor = Color.White),
+        )
+    }
+}
+
+/* ---------------- UPDATE ---------------- */
+@Composable
+fun UpdateBanner(info: UpdateInfo, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(C.Ocean, C.Aqua))).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Ic.Refresh, null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Pembaruan tersedia: v${info.version}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("Ketuk untuk memasang", color = Color.White.copy(alpha = .85f), fontSize = 11.sp)
+        }
+        Text("PASANG", color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp)
+    }
+}
+
+@Composable
+fun UpdateCard(info: UpdateInfo, s: AppState, modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var progress by remember { mutableStateOf<Float?>(null) }
+    var err by remember { mutableStateOf("") }
+    var ready by remember { mutableStateOf<java.io.File?>(null) }
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.Surface).padding(14.dp)) {
+        Text("Versi ${info.version} tersedia", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        if (info.size > 0) Text("Ukuran ± ${"%.1f".format(info.size / 1048576f)} MB", color = C.Muted, fontSize = 12.sp)
+        if (info.notes.isNotBlank()) Text(info.notes.take(400), color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+        Spacer(Modifier.height(10.dp))
+        val p = progress
+        if (p != null) {
+            Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color.White.copy(alpha = .2f))) {
+                Box(Modifier.fillMaxWidth(p).fillMaxHeight().background(C.Aqua))
+            }
+            Text("Mengunduh ${(p * 100).toInt()}%", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        } else {
+            AButton(if (ready != null) "Pasang sekarang" else "Unduh & pasang", Ic.Check, true) {
+                val f = ready
+                if (f != null) { Updater.install(ctx, f); return@AButton }
+                scope.launch {
+                    err = ""; progress = 0f
+                    try {
+                        val file = Updater.download(ctx, info) { progress = it }
+                        ready = file; progress = null
+                        if (!Updater.install(ctx, file)) err = "Izinkan Aphodius memasang aplikasi, lalu tekan “Pasang sekarang”."
+                    } catch (e: Exception) {
+                        progress = null; err = "Gagal mengunduh: ${e.message}"
+                    }
+                }
+            }
+        }
+        if (err.isNotEmpty()) Text(err, color = Color(0xFFFF6B6B), fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+    }
 }

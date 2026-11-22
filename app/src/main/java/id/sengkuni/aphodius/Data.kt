@@ -89,6 +89,25 @@ class Store(ctx: Context) {
     var speed: Float
         get() = sp.getFloat("speed", 1f)
         set(v) { sp.edit().putFloat("speed", v).apply() }
+    /** Persen bagian atas video yang dipotong (menyembunyikan banner/iklan di atas video). */
+    var cropTop: Int
+        get() = sp.getInt("cropTop", 8)
+        set(v) { sp.edit().putInt("cropTop", v).apply() }
+    var nickname: String
+        get() = sp.getString("nickname", "") ?: ""
+        set(v) { sp.edit().putString("nickname", v).apply() }
+    var pinSalt: String
+        get() = sp.getString("pinSalt", "") ?: ""
+        set(v) { sp.edit().putString("pinSalt", v).apply() }
+    var pinHash: String
+        get() = sp.getString("pinHash", "") ?: ""
+        set(v) { sp.edit().putString("pinHash", v).apply() }
+    var biometric: Boolean
+        get() = sp.getBoolean("biometric", false)
+        set(v) { sp.edit().putBoolean("biometric", v).apply() }
+    var lastUpdateCheck: Long
+        get() = sp.getLong("lastUpdateCheck", 0L)
+        set(v) { sp.edit().putLong("lastUpdateCheck", v).apply() }
     fun favs(): Set<String> = sp.getStringSet("favs", emptySet())!!.toSet()
     fun saveFavs(s: Set<String>) { sp.edit().putStringSet("favs", s).apply() }
     fun progress(): Map<String, Prog> {
@@ -120,6 +139,11 @@ class AppState(ctx: Context) {
     val progress = mutableStateMapOf<String, Prog>().also { it.putAll(store.progress()) }
     var quality by mutableStateOf(store.quality)
     var speed by mutableStateOf(store.speed)
+    var cropTop by mutableStateOf(store.cropTop)
+    var nickname by mutableStateOf(store.nickname)
+    var lockEnabled by mutableStateOf(store.pinHash.isNotEmpty())
+    var biometric by mutableStateOf(store.biometric)
+    var update by mutableStateOf<UpdateInfo?>(null)
 
     fun find(id: String): Film? = films.firstOrNull { it.id == id }
 
@@ -177,4 +201,18 @@ class AppState(ctx: Context) {
 
     fun setQualityPref(q: Int) { quality = q; store.quality = q }
     fun setSpeedPref(s: Float) { speed = s; store.speed = s }
+    fun setCropPref(c: Int) { cropTop = c; store.cropTop = c }
+    fun setNickname(n: String) { nickname = n.trim(); store.nickname = nickname }
+    fun setBiometricPref(b: Boolean) { biometric = b; store.biometric = b }
+
+    fun setPin(pin: String) {
+        val salt = java.util.UUID.randomUUID().toString()
+        store.pinSalt = salt
+        store.pinHash = hashPin(salt, pin)
+        lockEnabled = true
+    }
+    fun checkPin(pin: String): Boolean = store.pinHash.isNotEmpty() && hashPin(store.pinSalt, pin) == store.pinHash
+    fun clearPin() { store.pinHash = ""; store.pinSalt = ""; lockEnabled = false; setBiometricPref(false) }
+    private fun hashPin(salt: String, pin: String): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest("$salt:$pin".toByteArray()).joinToString("") { "%02x".format(it) }
 }
