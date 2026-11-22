@@ -5,7 +5,7 @@ Memutar video dari koleksi link X (Twitter) yang disimpan di web **Master Stream
 
 ## Cara kerja
 - Daftar film dibaca dari `data.json` Master Stream
-  (`efendiyhy/ek-web` → `public/master-stream/data.json`), diperbarui otomatis setiap aplikasi dibuka.
+  (repo `efendiyhy/master-stream-data` → `data.json`, harus public), diperbarui otomatis setiap aplikasi dibuka.
 - Link X diekstrak menjadi URL video langsung (`video.twimg.com`), lalu diputar penuh layar — tanpa tampilan X.
 - Pemutar: ketuk dua kali kiri/kanan = mundur/maju 10 dtk, geser vertikal kiri = kecerahan, kanan = suara,
   pilih kualitas, kecepatan, rasio layar, lanjut menonton otomatis.

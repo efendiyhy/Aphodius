@@ -12,10 +12,9 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-// Repo ek-web bersifat private, jadi data dibaca dari situs publik (Firebase Hosting) yang di-deploy dari repo itu.
+// Data film disimpan web Master Stream di repo master-stream-data (harus berstatus public agar bisa dibaca aplikasi).
 val DATA_URLS = listOf(
-    "https://ekinstru.web.app/master-stream/data.json",
-    "https://ekinstru.firebaseapp.com/master-stream/data.json",
+    "https://raw.githubusercontent.com/efendiyhy/master-stream-data/main/data.json",
 )
 const val UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
 
