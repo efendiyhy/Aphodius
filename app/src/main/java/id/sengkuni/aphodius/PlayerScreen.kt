@@ -393,7 +393,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                         PanelTitle("Crop video")
                         PanelItem("Atur crop manual…", false) { panel = null; controls = false; editing = true }
                         PanelItem(if (s.hasCrop) "Pakai crop tersimpan" else "Pakai crop tersimpan (belum ada)", s.cropOn && s.hasCrop) {
-                            if (s.hasCrop) { s.setCropOn(!s.cropOn); panel = null } else { panel = null; controls = false; editing = true }
+                            if (s.hasCrop) { s.useCrop(!s.cropOn); panel = null } else { panel = null; controls = false; editing = true }
                         }
                         PanelItem("Matikan & hapus crop tersimpan", false) { s.clearCrop(); panel = null }
                     }

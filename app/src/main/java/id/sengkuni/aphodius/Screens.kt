@@ -498,7 +498,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
 
         SettingHeader("Pemutar")
         SettingRow("Crop video", if (s.hasCrop) "Memakai crop tersimpan dari pemutar" else "Belum ada crop — atur lewat tombol Crop di pemutar", s.cropOn && s.hasCrop) {
-            if (s.hasCrop) s.setCropOn(!s.cropOn)
+            if (s.hasCrop) s.useCrop(!s.cropOn)
         }
         if (s.hasCrop) Text("Hapus crop tersimpan", color = C.Aqua, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).clickable { s.clearCrop() })
 

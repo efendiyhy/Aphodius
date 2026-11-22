@@ -209,9 +209,9 @@ class AppState(ctx: Context) {
     fun setQualityPref(q: Int) { quality = q; store.quality = q }
     fun setSpeedPref(s: Float) { speed = s; store.speed = s }
     val hasCrop: Boolean get() = crop.any { it > 0.001f }
-    fun setCropOn(b: Boolean) { cropOn = b; store.cropOn = b }
-    fun saveCrop(c: List<Float>) { crop = c; store.crop = c; setCropOn(c.any { it > 0.001f }) }
-    fun clearCrop() { crop = listOf(0f, 0f, 0f, 0f); store.crop = crop; setCropOn(false) }
+    fun useCrop(b: Boolean) { cropOn = b; store.cropOn = b }
+    fun saveCrop(c: List<Float>) { crop = c; store.crop = c; useCrop(c.any { it > 0.001f }) }
+    fun clearCrop() { crop = listOf(0f, 0f, 0f, 0f); store.crop = crop; useCrop(false) }
     fun saveNickname(n: String) { nickname = n.trim(); store.nickname = nickname }
     fun setBiometricPref(b: Boolean) { biometric = b; store.biometric = b }
 
