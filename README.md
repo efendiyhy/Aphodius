@@ -11,6 +11,8 @@ Memutar video dari koleksi link X (Twitter) yang disimpan di web **Master Stream
   pilih kualitas, kecepatan, rasio layar, lanjut menonton otomatis.
 
 ## Build
-CI GitHub Actions (`.github/workflows/build.yml`) membangun APK. Rilis dibuat otomatis saat tag `vX.Y.Z` di-push.
+CI GitHub Actions (`.github/workflows/build.yml`) membangun APK. Rilis dibuat otomatis dari `version.txt`.
+
+Rilis baru: naikkan angka di `version.txt` lalu push ke `main` — CI membuat tag dan rilis otomatis.
 
 Folder `portrait/`, `landscape/`, `00-design-system.svg`, `preview.html` adalah desain UI kit.
