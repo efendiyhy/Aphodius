@@ -350,9 +350,6 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit) {
 }
 
 @Composable
-private fun Modifier.horizontalScroll(rememberScrollState()): Modifier = this.then(Modifier.horizontalScroll(rememberScrollState()))
-
-@Composable
 private fun DetailAction(icon: ImageVector, label: String, onClick: () -> Unit) {
     Column(Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(icon, label, tint = Color.White, modifier = Modifier.size(26.dp))
