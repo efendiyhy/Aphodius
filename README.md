@@ -19,6 +19,10 @@ Folder `portrait/`, `landscape/`, `00-design-system.svg`, `preview.html` adalah 
 
 ## v1.2.0
 - Nama sapaan saat pertama kali dipasang, profil lokal, dan kunci aplikasi (PIN 4 digit + sidik jari opsional).
-- Pemutar: bagian atas video dipotong (default 8%, bisa diatur 0–25% di Profil) untuk menyembunyikan iklan di atas video.
+- Pemutar: crop manual (tombol Crop) — geser 4 garis, simpan, berlaku global; bisa dimatikan/dihapus (mati = video tampil apa adanya).
 - Menu bawah "Cari" diganti "Movie" (film dikelompokkan per genre); pencarian tetap ada lewat ikon di Beranda.
 - Pembaruan dalam aplikasi: banner info + unduh & pasang langsung dari rilis GitHub.
+
+## v1.2.1
+- Crop otomatis dihapus; diganti crop manual yang bisa disimpan dan dimatikan.
+- Sinopsis film dari web ditampilkan di halaman detail.

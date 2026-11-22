@@ -27,6 +27,7 @@ private fun filled(name: String, d: String): ImageVector =
 object Ic {
     val Home by lazy { stroke("home", "M3 11l9-8 9 8v10h-6v-6H9v6H3z") }
     val Search by lazy { stroke("search", "M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-6-6") }
+    val Crop by lazy { stroke("crop", "M6 2v14a2 2 0 0 0 2 2h14M18 22V8a2 2 0 0 0-2-2H2") }
     val Play by lazy { stroke("play", "M6 4l14 8-14 8z") }
     val PlayFill by lazy { filled("playFill", "M6 4l14 8-14 8z") }
     val PauseFill by lazy { filled("pauseFill", "M6 4h4v16H6zM14 4h4v16h-4z") }

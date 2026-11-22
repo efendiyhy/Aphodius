@@ -26,6 +26,7 @@ data class Film(
     val genres: List<String>,
     val poster: String,
     val added: Long,
+    val synopsis: String = "",
 )
 
 data class Prog(val pos: Long, val dur: Long, val ts: Long) {
@@ -70,6 +71,7 @@ fun parseFilms(text: String): Pair<List<Film>, List<String>> {
                 genres = g,
                 poster = poster,
                 added = f.optLong("added", 0L),
+                synopsis = if (f.isNull("synopsis")) "" else f.optString("synopsis", "").trim(),
             )
         )
     }
@@ -90,9 +92,13 @@ class Store(ctx: Context) {
         get() = sp.getFloat("speed", 1f)
         set(v) { sp.edit().putFloat("speed", v).apply() }
     /** Persen bagian atas video yang dipotong (menyembunyikan banner/iklan di atas video). */
-    var cropTop: Int
-        get() = sp.getInt("cropTop", 8)
-        set(v) { sp.edit().putInt("cropTop", v).apply() }
+    var cropOn: Boolean
+        get() = sp.getBoolean("cropOn", false)
+        set(v) { sp.edit().putBoolean("cropOn", v).apply() }
+    /** Inset crop (0..0.45) dari tepi kiri, atas, kanan, bawah. */
+    var crop: List<Float>
+        get() = (sp.getString("crop", "0,0,0,0") ?: "0,0,0,0").split(",").mapNotNull { it.toFloatOrNull() }.let { if (it.size == 4) it else listOf(0f, 0f, 0f, 0f) }
+        set(v) { sp.edit().putString("crop", v.joinToString(",")).apply() }
     var nickname: String
         get() = sp.getString("nickname", "") ?: ""
         set(v) { sp.edit().putString("nickname", v).apply() }
@@ -139,7 +145,8 @@ class AppState(ctx: Context) {
     val progress = mutableStateMapOf<String, Prog>().also { it.putAll(store.progress()) }
     var quality by mutableStateOf(store.quality)
     var speed by mutableStateOf(store.speed)
-    var cropTop by mutableStateOf(store.cropTop)
+    var cropOn by mutableStateOf(store.cropOn)
+    var crop by mutableStateOf(store.crop)
     var nickname by mutableStateOf(store.nickname)
     var lockEnabled by mutableStateOf(store.pinHash.isNotEmpty())
     var biometric by mutableStateOf(store.biometric)
@@ -201,7 +208,10 @@ class AppState(ctx: Context) {
 
     fun setQualityPref(q: Int) { quality = q; store.quality = q }
     fun setSpeedPref(s: Float) { speed = s; store.speed = s }
-    fun setCropPref(c: Int) { cropTop = c; store.cropTop = c }
+    val hasCrop: Boolean get() = crop.any { it > 0.001f }
+    fun setCropOn(b: Boolean) { cropOn = b; store.cropOn = b }
+    fun saveCrop(c: List<Float>) { crop = c; store.crop = c; setCropOn(c.any { it > 0.001f }) }
+    fun clearCrop() { crop = listOf(0f, 0f, 0f, 0f); store.crop = crop; setCropOn(false) }
     fun saveNickname(n: String) { nickname = n.trim(); store.nickname = nickname }
     fun setBiometricPref(b: Boolean) { biometric = b; store.biometric = b }
 

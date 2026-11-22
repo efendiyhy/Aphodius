@@ -51,7 +51,12 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.layout.layout
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -112,6 +117,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     var dur by remember { mutableLongStateOf(0L) }
     var controls by remember { mutableStateOf(true) }
     var panel by remember { mutableStateOf<String?>(null) }
+    var editing by remember { mutableStateOf(false) }
     var resize by remember { mutableIntStateOf(0) }
     var hud by remember { mutableStateOf<String?>(null) }
     var dragging by remember { mutableStateOf(false) }
@@ -202,13 +208,22 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         onDispose { lifecycle.removeObserver(o) }
     }
 
-    BackHandler { if (panel != null) panel = null else onBack() }
+    BackHandler { if (editing) editing = false else if (panel != null) panel = null else onBack() }
 
     var volAcc by remember { mutableFloatStateOf(0f) }
     var dragLeft by remember { mutableStateOf(true) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        // Bagian atas video dipotong (cropTop %) untuk menyembunyikan iklan/banner di atas video.
+        // Crop global yang disimpan pengguna. Nonaktif = video tampil apa adanya.
+        val cr = s.crop
+        val cropActive = s.cropOn && s.hasCrop && !editing
+        val cl = if (cropActive) cr[0] else 0f
+        val ct = if (cropActive) cr[1] else 0f
+        val crr = if (cropActive) cr[2] else 0f
+        val cb = if (cropActive) cr[3] else 0f
+        val rw = 1f - cl - crr
+        val rh = 1f - ct - cb
+        val zoom = if (cropActive) minOf(1f / rw, 1f / rh) else 1f
         Box(Modifier.fillMaxSize().clipToBounds()) {
             AndroidView(
                 factory = { c ->
@@ -220,12 +235,21 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                     }
                 },
                 update = { it.resizeMode = resizeModes[resize].first },
-                modifier = Modifier.layout { m, c ->
-                    val extra = (c.maxHeight * s.cropTop / 100f).toInt()
-                    val pl = m.measure(c.copy(minHeight = c.maxHeight + extra, maxHeight = c.maxHeight + extra))
-                    layout(c.maxWidth, c.maxHeight) { pl.place(0, -extra) }
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    scaleX = zoom; scaleY = zoom
+                    translationX = zoom * (0.5f - (cl + 1f - crr) / 2f) * size.width
+                    translationY = zoom * (0.5f - (ct + 1f - cb) / 2f) * size.height
                 },
             )
+            if (cropActive) Canvas(Modifier.fillMaxSize()) {
+                val w = size.width; val h = size.height
+                val vw = rw * zoom * w; val vh = rh * zoom * h
+                val x0 = (w - vw) / 2f; val y0 = (h - vh) / 2f
+                drawRect(Color.Black, Offset(0f, 0f), Size(w, y0))
+                drawRect(Color.Black, Offset(0f, y0 + vh), Size(w, h - y0 - vh))
+                drawRect(Color.Black, Offset(0f, y0), Size(x0, vh))
+                drawRect(Color.Black, Offset(x0 + vw, y0), Size(w - x0 - vw, vh))
+            }
         }
 
         // Lapisan gestur: ketuk = tampil/sembunyi kontrol, ketuk dua kali = ±10 dtk, geser vertikal = kecerahan/suara
@@ -337,6 +361,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                         BarButton(if (muted) Ic.Mute else Ic.Volume, "Suara") { panel = "volume" }
                         BarButton(Ic.Quality, "Kualitas · " + (if (s.quality == 0) "Otomatis" else "${s.quality}p")) { panel = "quality" }
                         BarButton(Ic.Speed, "Kecepatan · ${fmtSpeed(s.speed)}") { panel = "speed" }
+                        BarButton(Ic.Crop, "Crop · " + (if (s.cropOn && s.hasCrop) "Aktif" else "Mati")) { panel = "crop" }
                         if (next != null) BarButton(Ic.Next, "Berikutnya") { onNext(next) }
                     }
                 }
@@ -364,6 +389,14 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                             PanelItem(if (sp == 1f) "Normal" else fmtSpeed(sp), s.speed == sp) { s.setSpeedPref(sp); player.setPlaybackSpeed(sp); panel = null }
                         }
                     }
+                    "crop" -> {
+                        PanelTitle("Crop video")
+                        PanelItem("Atur crop manual…", false) { panel = null; controls = false; editing = true }
+                        PanelItem(if (s.hasCrop) "Pakai crop tersimpan" else "Pakai crop tersimpan (belum ada)", s.cropOn && s.hasCrop) {
+                            if (s.hasCrop) { s.setCropOn(!s.cropOn); panel = null } else { panel = null; controls = false; editing = true }
+                        }
+                        PanelItem("Matikan & hapus crop tersimpan", false) { s.clearCrop(); panel = null }
+                    }
                     "volume" -> {
                         PanelTitle("Suara")
                         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -381,6 +414,12 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                 }
             }
         }
+
+        if (editing) CropEditor(
+            initial = if (s.hasCrop) s.crop else listOf(0f, 0f, 0f, 0f),
+            onSave = { s.saveCrop(it); editing = false },
+            onCancel = { editing = false },
+        )
     }
 }
 
@@ -416,5 +455,66 @@ private fun PanelItem(text: String, selected: Boolean, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(text, color = if (selected) C.Aqua else Color.White, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f))
         if (selected) Icon(Ic.Check, null, tint = C.Aqua, modifier = Modifier.size(20.dp))
+    }
+}
+
+/** Atur garis crop dengan menggeser garis di layar (kiri, atas, kanan, bawah). Hasil disimpan global. */
+@Composable
+private fun CropEditor(initial: List<Float>, onSave: (List<Float>) -> Unit, onCancel: () -> Unit) {
+    var ins by remember { mutableStateOf(initial) } // kiri, atas, kanan, bawah
+    var size by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(1, 1)) }
+    var edge by remember { mutableIntStateOf(-1) }
+    val aqua = C.Aqua
+    Box(Modifier.fillMaxSize().onSizeChanged { size = it }) {
+        Canvas(
+            Modifier.fillMaxSize().pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { o ->
+                        val w = size.width.toFloat(); val h = size.height.toFloat()
+                        val d = floatArrayOf(
+                            kotlin.math.abs(o.x - ins[0] * w), kotlin.math.abs(o.y - ins[1] * h),
+                            kotlin.math.abs(o.x - (1 - ins[2]) * w), kotlin.math.abs(o.y - (1 - ins[3]) * h),
+                        )
+                        val m = d.indices.minByOrNull { d[it] } ?: 0
+                        edge = if (d[m] < 90.dp.toPx()) m else -1
+                    },
+                    onDragEnd = { edge = -1 },
+                    onDragCancel = { edge = -1 },
+                ) { change, drag ->
+                    change.consume()
+                    if (edge < 0) return@detectDragGestures
+                    val w = size.width.toFloat(); val h = size.height.toFloat()
+                    val n = ins.toMutableList()
+                    val delta = when (edge) { 0 -> drag.x / w; 1 -> drag.y / h; 2 -> -drag.x / w; else -> -drag.y / h }
+                    val limit = if (edge % 2 == 0) 0.9f - ins[if (edge == 0) 2 else 0] else 0.9f - ins[if (edge == 1) 3 else 1]
+                    n[edge] = (n[edge] + delta).coerceIn(0f, limit.coerceAtLeast(0f))
+                    ins = n
+                }
+            },
+        ) {
+            val w = size.width; val h = size.height
+            val l = ins[0] * w; val t = ins[1] * h; val r = w - ins[2] * w; val b = h - ins[3] * h
+            val dim = Color.Black.copy(alpha = .65f)
+            drawRect(dim, Offset(0f, 0f), Size(w, t))
+            drawRect(dim, Offset(0f, b), Size(w, h - b))
+            drawRect(dim, Offset(0f, t), Size(l, b - t))
+            drawRect(dim, Offset(r, t), Size(w - r, b - t))
+            val sw = 3.dp.toPx()
+            drawLine(aqua, Offset(l, 0f), Offset(l, h), sw)
+            drawLine(aqua, Offset(r, 0f), Offset(r, h), sw)
+            drawLine(aqua, Offset(0f, t), Offset(w, t), sw)
+            drawLine(aqua, Offset(0f, b), Offset(w, b), sw)
+            val hr = 9.dp.toPx()
+            drawCircle(aqua, hr, Offset(l, h / 2)); drawCircle(aqua, hr, Offset(r, h / 2))
+            drawCircle(aqua, hr, Offset(w / 2, t)); drawCircle(aqua, hr, Offset(w / 2, b))
+        }
+        Column(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 12.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = .7f)).padding(horizontal = 16.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Geser garis untuk mengatur area video", color = Color.White, fontSize = 13.sp)
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AButton("SIMPAN", Ic.Check, true) { onSave(ins) }
+                AButton("RESET", null, false) { ins = listOf(0f, 0f, 0f, 0f) }
+                AButton("BATAL", null, false) { onCancel() }
+            }
+        }
     }
 }

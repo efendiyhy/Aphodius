@@ -335,6 +335,11 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit) {
         Column(Modifier.padding(horizontal = 16.dp)) {
             Text(f.name, fontSize = 26.sp, fontWeight = FontWeight.Black)
             Text("Film" + (f.year?.let { " • $it" } ?: ""), color = C.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            if (f.synopsis.isNotBlank()) {
+                Spacer(Modifier.height(14.dp))
+                Text("Sinopsis", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(f.synopsis, color = Color(0xFFD0DCE8), fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 4.dp))
+            }
             Spacer(Modifier.height(14.dp))
             AButton(if (resume) "LANJUTKAN ${fmtTime(prog!!.pos)}" else "PUTAR", Ic.PlayFill, true, Modifier.fillMaxWidth()) { onPlay() }
             Spacer(Modifier.height(8.dp))
@@ -492,14 +497,10 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
         }
 
         SettingHeader("Pemutar")
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text("Potong bagian atas video: ${s.cropTop}%", fontSize = 15.sp)
-            Text("Menyembunyikan iklan/banner yang menempel di atas video.", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 6.dp))
-            androidx.compose.material3.Slider(
-                value = s.cropTop.toFloat(), onValueChange = { s.setCropPref(it.toInt()) }, valueRange = 0f..25f, steps = 24,
-                colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = C.Aqua, activeTrackColor = C.Aqua),
-            )
+        SettingRow("Crop video", if (s.hasCrop) "Memakai crop tersimpan dari pemutar" else "Belum ada crop — atur lewat tombol Crop di pemutar", s.cropOn && s.hasCrop) {
+            if (s.hasCrop) s.setCropOn(!s.cropOn)
         }
+        if (s.hasCrop) Text("Hapus crop tersimpan", color = C.Aqua, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).clickable { s.clearCrop() })
 
         SettingHeader("Tentang")
         Text("Aphodius v${BuildConfig.VERSION_NAME}", color = C.Muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
