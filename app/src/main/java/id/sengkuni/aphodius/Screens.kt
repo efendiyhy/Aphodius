@@ -9,6 +9,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -273,7 +274,7 @@ fun PosterRow(films: List<Film>, s: AppState, onOpen: (Film) -> Unit, showProgre
                 Box {
                     Poster(f, Modifier.fillMaxWidth().aspectRatio(2f / 3f))
                     if (!showProgress) DoneBadge(f)
-                    androidx.compose.material3.DropdownMenu(expanded = menuFor == f.id, onDismissRequest = { menuFor = null }, containerColor = C.Surface) {
+                    androidx.compose.material3.DropdownMenu(expanded = menuFor == f.id, onDismissRequest = { menuFor = null }, modifier = Modifier.background(C.Surface)) {
                         androidx.compose.material3.DropdownMenuItem(
                             text = { Text("Hapus dari Lanjutkan", color = Color.White) },
                             onClick = { s.hideFromContinue(f); menuFor = null },
