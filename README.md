@@ -84,6 +84,19 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 </details>
 
 <details>
+<summary><b>v1.9.0</b> — Pemutar lebih lengkap, Nobar lebih seru</summary>
+
+- Kolom cari di Beranda, Movie, dan Series. Tarik ke bawah di Beranda untuk muat ulang, lengkap dengan jumlah film baru.
+- Tanda *Selesai* di poster, tombol *Mulai dari awal*, urutan Daftarku (terbaru, abjad, terakhir ditonton), dan *Hapus dari Lanjutkan* dengan tekan-lama.
+- Halaman *Riwayat tontonan* di Profil, bisa hapus satu atau semua.
+- Pemutar: tombol Berikutnya memilih film sejenis dan menampilkan judulnya dulu, kunci rotasi, durasi lompat 5/10/30 detik, timer tidur, petunjuk gestur, dan tahap memuat yang jelas.
+- Hemat data: kualitas default 480p khusus data seluler.
+- Nobar: reaksi emoji melayang, status siap/buffering tiap peserta, tombol *Tunggu semua siap*, dan host bisa mengeluarkan peserta.
+- Pesan error lebih mudah dipahami, banner saat offline, layar kosong dengan langkah jelas, poster dengan placeholder, tata letak dua kolom di tablet, dan jeda tenggang 45 detik sebelum PIN mengunci lagi.
+- Teks lebih besar dan kontras lebih kuat, mengikuti ukuran font sistem. Area sentuh tombol minimal 48dp.
+</details>
+
+<details>
 <summary><b>v1.7.0</b> — Nonton bareng (Nobar)</summary>
 
 - Buat ruangan dari halaman film atau langsung dari pemutar (tombol kanan atas), bagikan kode 6 karakter, maksimal 4 orang.
