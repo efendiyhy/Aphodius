@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.withStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -57,7 +59,7 @@ fun rememberMicAction(room: NobarRoom): () -> Unit {
 }
 
 @Composable
-private fun TextInput(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier = Modifier, caps: Boolean = false, onDone: () -> Unit = {}) {
+private fun TextInput(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier = Modifier, caps: Boolean = false, focus: androidx.compose.ui.focus.FocusRequester? = null, onDone: () -> Unit = {}) {
     Box(modifier.clip(RoundedCornerShape(12.dp)).background(C.SurfaceHigh).padding(horizontal = 14.dp, vertical = 12.dp)) {
         if (value.isEmpty()) Text(hint, color = C.Subtle, fontSize = 14.sp)
         BasicTextField(
@@ -66,7 +68,7 @@ private fun TextInput(value: String, onChange: (String) -> Unit, hint: String, m
             cursorBrush = SolidColor(C.Aqua),
             keyboardOptions = KeyboardOptions(capitalization = if (caps) KeyboardCapitalization.Characters else KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSend = { onDone() }, onDone = { onDone() }),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = if (focus != null) Modifier.fillMaxWidth().focusRequester(focus) else Modifier.fillMaxWidth(),
         )
     }
 }
@@ -75,6 +77,14 @@ private fun TextInput(value: String, onChange: (String) -> Unit, hint: String, m
 @Composable
 fun ChatBox(room: NobarRoom, modifier: Modifier = Modifier, size: Int = 15) {
     var draft by remember { mutableStateOf("") }
+    val fr = remember { androidx.compose.ui.focus.FocusRequester() }
+    val kb = LocalSoftwareKeyboardController.current
+    // Setelah kirim, kolom tulis tetap fokus dan keyboard tetap terbuka
+    val send: () -> Unit = {
+        if (draft.isNotBlank()) { room.send(draft); draft = "" }
+        runCatching { fr.requestFocus() }
+        kb?.show()
+    }
     val listState = rememberLazyListState()
     LaunchedEffect(room.chat.lastOrNull()?.id) { if (room.chat.isNotEmpty()) listState.animateScrollToItem(room.chat.size - 1) }
     Column(modifier) {
@@ -92,9 +102,9 @@ fun ChatBox(room: NobarRoom, modifier: Modifier = Modifier, size: Int = 15) {
         }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextInput(draft, { draft = it.take(300) }, "Tulis pesan…", Modifier.weight(1f), onDone = { room.send(draft); draft = "" })
+            TextInput(draft, { draft = it.take(300) }, "Tulis pesan…", Modifier.weight(1f), focus = fr, onDone = send)
             Spacer(Modifier.width(8.dp))
-            IconBtn(Ic.Send, "Kirim", { room.send(draft); draft = "" }, size = 44.dp, tint = C.Aqua)
+            IconBtn(Ic.Send, "Kirim", send, size = 44.dp, tint = C.Aqua)
         }
     }
 }

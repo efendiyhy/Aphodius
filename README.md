@@ -90,6 +90,7 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 - Putar, jeda, dan geser waktu tersinkron untuk semua anggota. Host bisa mengizinkan semua orang ikut mengendalikan.
 - Chat dan suara langsung (tekan tombol mikrofon sendiri). Surround bioskop dimatikan sementara saat suara aktif.
 - Film dewasa dan Extraordinary tetap bisa dinobarkan; anggota perlu fitur itu aktif di profilnya.
+- Keyboard chat tetap terbuka setelah mengirim pesan.
 - Keluar dari ruangan tidak menutupnya: ruangan tetap aktif sampai host menutupnya, dan bisa dilanjutkan dari riwayat.
 - Chat di pemutar tampil sebagai panel di kanan (video bergeser), atau pesan melayang transparan saat layar penuh.
 - Kunci layar di pemutar agar tidak tersentuh saat menonton.
