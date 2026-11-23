@@ -51,6 +51,7 @@ fun App(s: AppState) {
     var splash by remember { mutableStateOf(true) }
     var tab by remember { mutableStateOf(Tab.Home) }
     var stack by remember { mutableStateOf(listOf<Route>()) }
+    var stopAt by remember { mutableLongStateOf(0L) }
     var locked by remember { mutableStateOf(s.lockEnabled) }  // Adults aktif => kunci wajib (lockEnabled dijamin true)
     val scope = rememberCoroutineScope()
 
@@ -77,7 +78,13 @@ fun App(s: AppState) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val o = LifecycleEventObserver { _, e ->
-            if (e == Lifecycle.Event.ON_STOP && s.lockEnabled) locked = true
+            if (e == Lifecycle.Event.ON_STOP) stopAt = System.currentTimeMillis()
+            if (e == Lifecycle.Event.ON_START && s.lockEnabled && stopAt > 0L) {
+                // Jeda tenggang: tidak terkunci bila kembali dalam 45 detik (mis. setelah Bagikan / Buka di X)
+                val now = System.currentTimeMillis()
+                if (now - stopAt > 45_000L && now > s.graceUntil) locked = true
+                stopAt = 0L
+            }
             if (e == Lifecycle.Event.ON_RESUME && System.currentTimeMillis() - s.lastRefresh > 5_000) {
                 scope.launch { s.refresh() }
             }
@@ -96,7 +103,7 @@ fun App(s: AppState) {
             onDismissRequest = { s.crashInfo = null },
             containerColor = C.Surface,
             title = { androidx.compose.material3.Text("Aplikasi sempat tertutup", color = androidx.compose.ui.graphics.Color.White) },
-            text = { androidx.compose.material3.Text(info, color = C.Muted, fontSize = 11.sp) },
+            text = { androidx.compose.material3.Text(info, color = C.Muted, fontSize = 12.sp) },
             confirmButton = { androidx.compose.material3.TextButton(onClick = { s.crashInfo = null }) { androidx.compose.material3.Text("Tutup", color = C.Aqua) } },
         )
     }

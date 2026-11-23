@@ -71,6 +71,10 @@ val Film.kind: String get() = if (isSeries) "Series" else "Film"
 
 
 /* ---------------- Util tambahan ---------------- */
+/** Jumlah kolom grid mengikuti lebar layar (tablet/layar lipat dapat lebih banyak kolom). */
+@Composable
+fun gridCols(): Int = (LocalConfiguration.current.screenWidthDp / 120).coerceIn(3, 8)
+
 val LocalApp = compositionLocalOf<AppState?> { null }
 
 /** Lencana "Selesai" untuk film yang sudah ditonton (95% atau lebih). */
@@ -80,7 +84,7 @@ fun BoxScope.DoneBadge(f: Film) {
     if (f.isSeries) return
     if ((s.progress[f.id]?.frac ?: 0f) > 0.95f) {
         Text(
-            "Selesai", color = C.OnAqua, fontSize = 10.sp, fontWeight = FontWeight.Black,
+            "Selesai", color = C.OnAqua, fontSize = 12.sp, fontWeight = FontWeight.Black,
             modifier = Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(50)).background(C.Aqua).padding(horizontal = 8.dp, vertical = 3.dp),
         )
     }
@@ -216,12 +220,12 @@ fun SplashScreen() {
             Spacer(Modifier.height(26.dp))
             Wordmark(22.dp)
             Spacer(Modifier.height(12.dp))
-            Text("TONTON TANPA BATAS", color = C.Muted, fontSize = 11.sp, letterSpacing = 3.sp)
+            Text("TONTON TANPA BATAS", color = C.Muted, fontSize = 12.sp, letterSpacing = 3.sp)
             Spacer(Modifier.height(30.dp))
             CircularProgressIndicator(color = C.Aqua, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("dari", color = C.Subtle, fontSize = 11.sp)
+            Text("dari", color = C.Subtle, fontSize = 12.sp)
             Text("SengkuniDeveloper", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
     }
@@ -247,7 +251,7 @@ fun BottomNav(tab: Tab, extra: Boolean, onTab: (Tab) -> Unit) {
                         Icon(t.icon, t.label, tint = if (on) C.Aqua else C.Muted, modifier = Modifier.size(22.dp))
                     }
                     Spacer(Modifier.height(2.dp))
-                    Text(t.label, fontSize = 11.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium, color = if (on) C.Aqua else C.Muted)
+                    Text(t.label, fontSize = 12.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium, color = if (on) C.Aqua else C.Muted)
                 }
             }
         }
@@ -314,7 +318,7 @@ fun EmptyState(s: AppState, text: String) {
         if (s.netError && s.films.isEmpty()) {
             Text("Belum bisa memuat daftar film.", color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Text("Periksa koneksi internetmu, lalu tekan Muat ulang.", color = C.Muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
-            Text("Detail teknis: ${s.lastError}", color = C.Subtle, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+            Text("Detail teknis: ${s.lastError}", color = C.Subtle, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
         } else if (s.films.isEmpty() && s.loaded) {
             Text("Belum ada film di daftar", color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Text("1. Buka Master Stream di browser\n2. Masuk, lalu tempel link video X dan simpan\n3. Kembali ke sini, tekan Muat ulang", color = C.Muted, textAlign = TextAlign.Start, modifier = Modifier.padding(top = 8.dp))
@@ -364,7 +368,7 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
                 Spacer(Modifier.width(8.dp))
                 IconBtn(Ic.Search, "Cari", onSearch)
                 Spacer(Modifier.width(8.dp))
-                Box(Modifier.clickable { onProfile() }) { Avatar(s.nickname, 40) }
+                Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = "Buka profil") { onProfile() }, contentAlignment = Alignment.Center) { Avatar(s.nickname, 40) }
             }
         }
         item { SearchBarEntry("Cari film atau series…", onSearch) }
@@ -384,7 +388,7 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
         if (s.films.isEmpty()) {
             item { EmptyState(s, if (s.loaded) "Belum ada film.\nTambahkan lewat web Master Stream, lalu tekan Sinkron." else "Memuat data…") }
         } else if (genre != null) {
-            val cols = if (land) 6 else 3
+            val cols = gridCols()
             items(s.films.filter { genre in it.genres }.chunked(cols)) { rowFilms ->
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     rowFilms.forEach { f -> PosterCard(f, Modifier.weight(1f)) { onOpen(f) } }
@@ -405,7 +409,7 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
                     ) {
                         Box(Modifier.size(6.dp).rotate(45f).background(C.Gold))
                         Spacer(Modifier.width(8.dp))
-                        Text("SOROTAN", color = C.Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        Text("SOROTAN", color = C.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                     }
                     Column(Modifier.align(Alignment.BottomStart).padding(18.dp)) {
                         Text(hero.name, fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -483,7 +487,7 @@ fun SearchScreen(s: AppState, onBack: () -> Unit, onOpen: (Film) -> Unit, onPlay
         }
         Text(
             if (q.isBlank()) "PENCARIAN TERATAS" else "HASIL (${list.size})",
-            fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = C.Muted,
+            fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = C.Muted,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
         )
         LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
@@ -515,7 +519,7 @@ fun NewScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit) {
             Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                 Column(Modifier.width(48.dp)) {
                     if (f.added > 0) {
-                        Text(df.format(Date(f.added)).uppercase(), color = C.Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text(df.format(Date(f.added)).uppercase(), color = C.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         Text(dd.format(Date(f.added)), fontSize = 26.sp, fontWeight = FontWeight.Black)
                     }
                 }
@@ -525,7 +529,7 @@ fun NewScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit) {
                         IconBtn(Ic.PlayFill, "Putar", { onPlay(f) }, glass = true, size = 48.dp)
                         if (f.added > 0 && now - f.added < 604_800_000L) {
                             Text(
-                                "BARU", color = C.OnAqua, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
+                                "BARU", color = C.OnAqua, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
                                 modifier = Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(50)).background(C.Gold).padding(horizontal = 10.dp, vertical = 4.dp),
                             )
                         }
@@ -542,7 +546,7 @@ fun NewScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit) {
 @Composable
 fun ExtraScreen(s: AppState, onOpen: (Film) -> Unit) {
     val land = LocalConfiguration.current.screenWidthDp > 600
-    val cols = if (land) 6 else 3
+    val cols = gridCols()
     val list = s.extraFilms
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(bottom = 16.dp)) {
         item {
@@ -565,7 +569,7 @@ fun ExtraScreen(s: AppState, onOpen: (Film) -> Unit) {
 @Composable
 fun MyListScreen(s: AppState, onOpen: (Film) -> Unit) {
     val land = LocalConfiguration.current.screenWidthDp > 600
-    val cols = if (land) 6 else 3
+    val cols = gridCols()
     var sort by remember { mutableIntStateOf(0) }
     val list = s.films.filter { it.id in s.favs }.let { l ->
         when (sort) {
@@ -616,9 +620,9 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit, o
     val fav = f.id in s.favs
     val prog = s.lastProg(f)
     val resume = prog != null && prog.frac in 0.02f..0.95f
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        val land = LocalConfiguration.current.screenWidthDp > 600
-        Box(Modifier.fillMaxWidth().height(if (land) 280.dp else 360.dp), contentAlignment = Alignment.Center) {
+    val wide = LocalConfiguration.current.screenWidthDp >= 720
+    val heroBox: @Composable (Modifier) -> Unit = { m ->
+        Box(m, contentAlignment = Alignment.Center) {
             Poster(f, Modifier.fillMaxSize(), RoundedCornerShape(0.dp))
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .45f), Color.Transparent, C.Navy))))
             Row(Modifier.align(Alignment.TopCenter).statusBarsPadding().fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -628,6 +632,8 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit, o
                 Icon(Ic.PlayFill, "Putar", tint = Color.White, modifier = Modifier.size(28.dp))
             }
         }
+    }
+    val contentBox: @Composable () -> Unit = {
         Column(Modifier.padding(horizontal = 16.dp)) {
             Text(f.name, fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.Black)
             Text(
@@ -686,6 +692,17 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit, o
             Spacer(Modifier.height(28.dp))
         }
     }
+    if (wide) {
+        Row(Modifier.fillMaxSize()) {
+            heroBox(Modifier.weight(0.4f).fillMaxHeight())
+            Column(Modifier.weight(0.6f).fillMaxHeight().verticalScroll(rememberScrollState()).statusBarsPadding().padding(top = 24.dp, bottom = 24.dp)) { contentBox() }
+        }
+    } else {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            heroBox(Modifier.fillMaxWidth().height(360.dp))
+            contentBox()
+        }
+    }
 }
 
 @Composable
@@ -729,7 +746,7 @@ fun OnboardingScreen(onDone: (String) -> Unit) {
                 Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(14.dp)).background(if (ok) C.Aqua else Color.White.copy(alpha = .12f)).clickable(enabled = ok) { onDone(name.trim()) },
                 contentAlignment = Alignment.Center,
             ) { Text("MULAI", color = if (ok) C.OnAqua else C.Muted, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp) }
-            Text("Profil hanya tersimpan di perangkat ini.", color = C.Subtle, fontSize = 11.sp, modifier = Modifier.padding(top = 14.dp))
+            Text("Profil hanya tersimpan di perangkat ini.", color = C.Subtle, fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp))
         }
     }
 }
@@ -912,7 +929,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit, onHistory: () -> Unit = {}) {
             }
             EQ_LABELS.forEachIndexed { i, lb ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(lb, color = C.Muted, fontSize = 11.sp, modifier = Modifier.width(56.dp))
+                    Text(lb, color = C.Muted, fontSize = 12.sp, modifier = Modifier.width(56.dp))
                     androidx.compose.material3.Slider(
                         value = s.eq[i], onValueChange = { v -> s.updateEq(s.eq.toMutableList().also { it[i] = v }) }, valueRange = -1f..1f,
                         colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = C.Aqua, activeTrackColor = C.Aqua, inactiveTrackColor = C.Outline),
@@ -973,7 +990,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit, onHistory: () -> Unit = {}) {
 
 @Composable
 private fun SettingHeader(t: String) =
-    Text(t.uppercase(), color = C.Aqua, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 6.dp))
+    Text(t.uppercase(), color = C.Aqua, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 6.dp))
 
 @Composable
 private fun SettingRow(title: String, sub: String, on: Boolean, onClick: () -> Unit) {
@@ -1000,7 +1017,7 @@ fun UpdateBanner(info: UpdateInfo, onClick: () -> Unit) {
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text("Pembaruan tersedia: v${info.version}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Text("Ketuk untuk memasang", color = Color.White.copy(alpha = .85f), fontSize = 11.sp)
+            Text("Ketuk untuk memasang", color = Color.White.copy(alpha = .85f), fontSize = 12.sp)
         }
         Text("PASANG", color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp)
     }

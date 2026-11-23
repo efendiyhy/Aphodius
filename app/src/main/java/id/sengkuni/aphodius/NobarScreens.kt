@@ -125,8 +125,8 @@ fun MemberStrip(room: NobarRoom, modifier: Modifier = Modifier) {
                     Avatar(m.name, 34)
                     Box(Modifier.align(Alignment.BottomEnd).size(11.dp).clip(androidx.compose.foundation.shape.CircleShape).background(C.Navy).padding(2.dp).clip(androidx.compose.foundation.shape.CircleShape).background(if (m.buf) C.Gold else Color(0xFF3DDC84)))
                 }
-                Text((if (m.uid == room.info?.host) "★ " else "") + m.name.take(9), color = Color.White, fontSize = 11.sp, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
-                Text(if (m.buf) "buffering" else "siap", color = if (m.buf) C.Gold else C.Muted, fontSize = 10.sp)
+                Text((if (m.uid == room.info?.host) "★ " else "") + m.name.take(9), color = Color.White, fontSize = 12.sp, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+                Text(if (m.buf) "buffering" else "siap", color = if (m.buf) C.Gold else C.Muted, fontSize = 12.sp)
             }
         }
     }
@@ -191,7 +191,7 @@ private fun FloatingEmoji(m: NbMsg, modifier: Modifier, onDone: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(m.text, fontSize = 38.sp)
-        Text(m.name.take(10), color = Color.White.copy(alpha = .85f), fontSize = 11.sp)
+        Text(m.name.take(10), color = Color.White.copy(alpha = .85f), fontSize = 12.sp)
     }
 }
 
@@ -265,7 +265,7 @@ private fun SmallChip(text: String, active: Boolean, icon: androidx.compose.ui.g
     ) {
         val fg = if (active) C.OnAqua else Color.White
         if (icon != null) { Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(5.dp)) }
-        Text(text, color = fg, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -282,9 +282,9 @@ fun LobbyPanel(room: NobarRoom, modifier: Modifier = Modifier) {
             SmallChip(if (!room.voiceOn) "Nyalakan suara" else if (room.micOn) "Mik aktif" else "Mik mati", room.voiceOn && room.micOn, if (room.voiceOn && room.micOn) Ic.Mic else Ic.MicOff) { mic() }
             if (room.voiceOn) SmallChip("Matikan suara", false) { room.disableVoice() }
             if (room.isHost) SmallChip(if (room.info?.ctl == "all") "Semua boleh kendali: ya" else "Semua boleh kendali: tidak", room.info?.ctl == "all") { room.setControl(room.info?.ctl != "all") }
-            else Text(if (room.info?.ctl == "all") "Semua boleh mengendalikan" else "Hanya host yang mengendalikan", color = C.Subtle, fontSize = 11.sp)
+            else Text(if (room.info?.ctl == "all") "Semua boleh mengendalikan" else "Hanya host yang mengendalikan", color = C.Subtle, fontSize = 12.sp)
         }
-        if (room.voiceError.isNotEmpty()) Text(room.voiceError, color = Color(0xFFFF8A80), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+        if (room.voiceError.isNotEmpty()) Text(room.voiceError, color = Color(0xFFFF8A80), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         Spacer(Modifier.height(10.dp))
         ChatBox(room, Modifier.weight(1f), size = 16)
     }
@@ -335,11 +335,11 @@ fun NobarScreen(s: AppState, filmId: String?, onBack: () -> Unit, onWatch: (Film
                             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Text(h.filmName.ifBlank { "Film" }, color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("${h.code}${if (h.host) " · kamu host" else ""}", color = C.Muted, fontSize = 11.sp)
+                                    Text("${h.code}${if (h.host) " · kamu host" else ""}", color = C.Muted, fontSize = 12.sp)
                                 }
                                 Spacer(Modifier.width(8.dp))
                                 Box(Modifier.clip(RoundedCornerShape(50)).background(C.Aqua).clickable { if (!nb.busy) scope.launch { nb.join(h.code) { s.nickname } } }.padding(horizontal = 14.dp, vertical = 8.dp)) {
-                                    Text("LANJUTKAN", color = C.OnAqua, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                                    Text("LANJUTKAN", color = C.OnAqua, fontSize = 12.sp, fontWeight = FontWeight.Black)
                                 }
                             }
                         }
@@ -395,7 +395,7 @@ fun NobarScreen(s: AppState, filmId: String?, onBack: () -> Unit, onWatch: (Film
                 AButton(if (room.isHost) "TONTON" else "IKUT TONTON", Ic.PlayFill, f != null, Modifier.weight(1.5f)) { if (f != null) onWatch(f) }
             }
             if (room.isHost) Text("Tutup ruangan", color = C.Muted, fontSize = 12.sp, modifier = Modifier.align(Alignment.CenterHorizontally).clickable { confirmClose = true }.padding(top = 10.dp, bottom = 2.dp, start = 12.dp, end = 12.dp))
-            else Text("Keluar tidak menutup ruangan. Kamu bisa lanjut lagi dari Nobar di Beranda.", color = C.Subtle, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp))
+            else Text("Keluar tidak menutup ruangan. Kamu bisa lanjut lagi dari Nobar di Beranda.", color = C.Subtle, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }

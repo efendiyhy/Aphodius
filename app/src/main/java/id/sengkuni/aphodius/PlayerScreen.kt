@@ -122,6 +122,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     LaunchedEffect(s.surround, s.eq, room?.voiceOn) { fx.apply(s.surround && room?.voiceOn != true, s.eq) }
     var phase by remember { mutableIntStateOf(0) } // 0 memuat, 1 siap, 2 galat
     var error by remember { mutableStateOf("") }
+    var errorDetail by remember { mutableStateOf("") }
     var attempt by remember { mutableIntStateOf(0) }
     var variants by remember { mutableStateOf<List<VideoVariant>>(emptyList()) }
     var curVar by remember { mutableStateOf<VideoVariant?>(null) }
@@ -196,7 +197,8 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                 ended = state == Player.STATE_ENDED
             }
             override fun onPlayerError(e: PlaybackException) {
-                error = "Video tidak bisa diputar (${e.errorCodeName})."
+                errorDetail = "${e.errorCodeName} (${e.errorCode})"
+                error = friendlyError(e.errorCodeName)
                 phase = 2
             }
         }
@@ -225,7 +227,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
             val pr = s.progress[film.id]
             val seek = if (room == null && pr != null && pr.frac in 0.02f..0.95f) (pr.pos - 2000).coerceAtLeast(0) else 0L
             if (pick != null) { startPlay(pick, seek); phase = 1 } else { error = "Video tidak ditemukan."; phase = 2 }
-        }.onFailure { error = it.message ?: "Gagal memuat video."; phase = 2 }
+        }.onFailure { errorDetail = it.message ?: ""; error = friendlyError(it.message ?: ""); phase = 2 }
     }
 
     // Pembaruan posisi + simpan progres berkala
@@ -428,7 +430,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                 Text("• Ketuk dua kali di tengah: jeda / putar", color = Color.White, fontSize = 13.sp)
                 Text("• Geser atas-bawah di kiri: kecerahan", color = Color.White, fontSize = 13.sp)
                 Text("• Geser atas-bawah di kanan: suara", color = Color.White, fontSize = 13.sp)
-                Text("Ketuk untuk menutup", color = C.Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+                Text("Ketuk untuk menutup", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
             }
         }
 
@@ -446,6 +448,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         if (phase == 2) {
             Column(Modifier.align(Alignment.Center).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(error, color = Color.White, textAlign = TextAlign.Center)
+                if (errorDetail.isNotBlank()) Text("Detail teknis: $errorDetail", color = C.Subtle, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     AButton("COBA LAGI", Ic.Refresh, true) { attempt++ }
@@ -631,21 +634,21 @@ private fun fmtSpeed(v: Float): String = (if (v % 1f == 0f) v.toInt().toString()
 private fun SeekIcon(icon: ImageVector, label: String, onClick: () -> Unit) {
     Box(Modifier.size(52.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(44.dp))
-        Text(label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 private fun BarButton(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Column(Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.clip(RoundedCornerShape(8.dp)).heightIn(min = 48.dp).clickable(onClickLabel = label, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick).padding(horizontal = 12.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
-        Text(label, color = Color.White, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
+        Text(label, color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
 @Composable
 private fun PanelTitle(t: String) =
-    Text(t.uppercase(), color = C.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
+    Text(t.uppercase(), color = C.Muted, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
 
 @Composable
 private fun PanelItem(text: String, selected: Boolean, onClick: () -> Unit) {
@@ -780,3 +783,18 @@ private fun isMobileData(ctx: Context): Boolean = runCatching {
     val caps = cm.getNetworkCapabilities(cm.activeNetwork)
     caps != null && caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) && !caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
 }.getOrDefault(false)
+
+
+/** Ubah galat teknis menjadi kalimat sederhana. Detail aslinya ditampilkan kecil di bawahnya. */
+fun friendlyError(raw: String): String {
+    val r = raw.lowercase()
+    return when {
+        "404" in r || "tidak berisi video" in r || "not found" in r -> "Video tidak ditemukan. Mungkin sudah dihapus dari X."
+        "403" in r || "401" in r || "privat" in r -> "Video ini tidak bisa dibuka karena dibatasi pemiliknya."
+        "429" in r -> "Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi."
+        "network" in r || "unknownhost" in r || "timeout" in r || "menghubungi server" in r || "koneksi" in r || "unable to resolve" in r -> "Koneksi internet bermasalah. Periksa jaringanmu lalu coba lagi."
+        "decod" in r || "format" in r || "unsupported" in r -> "Format video ini tidak didukung di HP kamu."
+        "5" == r.take(1) && r.length >= 3 && r.take(3).all { it.isDigit() } -> "Server sedang bermasalah. Coba lagi nanti."
+        else -> "Video tidak bisa diputar saat ini. Coba lagi sebentar."
+    }
+}

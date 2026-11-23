@@ -36,8 +36,8 @@ object C {
     val Surface = Color(0xFF0D1A28)     // kartu, bilah navigasi
     val SurfaceHigh = Color(0xFF15283B) // input, chip, tombol tonal
     val Outline = Color(0xFF223850)     // garis tipis
-    val Muted = Color(0xFF8FA8BF)       // teks sekunder
-    val Subtle = Color(0xFF7692AC)      // teks tersier
+    val Muted = Color(0xFFABC0D4)       // teks sekunder
+    val Subtle = Color(0xFF91AAC2)      // teks tersier
     val OnAqua = Color(0xFF031019)      // teks/ikon di atas Aqua
     val Gold = Color(0xFFF2A33A)        // aksen scarab: lencana & sorotan
     val Brand = Brush.horizontalGradient(listOf(Ocean, Aqua))
@@ -145,12 +145,13 @@ fun IconBtn(
     icon: ImageVector, desc: String, onClick: () -> Unit,
     modifier: Modifier = Modifier, glass: Boolean = false, size: Dp = 40.dp, tint: Color = Color.White,
 ) {
+    val hit = if (size < 48.dp) 48.dp else size
     Box(
-        modifier.size(size).clip(CircleShape)
-            .background(if (glass) Color.Black.copy(alpha = .42f) else C.SurfaceHigh)
-            .clickable(onClick = onClick),
+        modifier.size(hit).clip(CircleShape).clickable(onClickLabel = desc, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, desc, tint = tint, modifier = Modifier.size(size * 0.5f))
+        Box(Modifier.size(size).clip(CircleShape).background(if (glass) Color.Black.copy(alpha = .42f) else C.SurfaceHigh), contentAlignment = Alignment.Center) {
+            Icon(icon, desc, tint = tint, modifier = Modifier.size(size * 0.5f))
+        }
     }
 }
