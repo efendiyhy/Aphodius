@@ -372,9 +372,8 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
                 Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = "Buka profil") { onProfile() }, contentAlignment = Alignment.Center) { Avatar(s.nickname, 40) }
             }
         }
-        item { SearchBarEntry("Cari film atau series…", onSearch) }
         if (s.nickname.isNotBlank()) item {
-            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 14.dp)) {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp)) {
                 Text("Halo,", color = Color(0xFFB4C7D9), fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 Text(s.nickname, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black, lineHeight = 34.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("Mau nonton apa hari ini?", color = C.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))

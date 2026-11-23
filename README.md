@@ -108,7 +108,7 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 - Chat di pemutar tampil sebagai panel di kanan (video bergeser), atau pesan melayang transparan saat layar penuh.
 - Kunci layar di pemutar agar tidak tersentuh saat menonton.
 - Nobar untuk series belum tersedia.
-- Pengaturan baru *Poster dari video*: film tanpa poster memakai thumbnail videonya.
+- Pengaturan *Poster dari video*: film tanpa poster memakai gambar dari tengah videonya.
 </details>
 
 <details>
