@@ -234,6 +234,25 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     }
     LaunchedEffect(hud) { if (hud != null) { delay(900); hud = null } }
 
+    // Nobar: lapor siap/buffering, dan host memulai bersamaan setelah semua siap
+    if (room != null) {
+        LaunchedEffect(phase, buffering, ended, isPlaying) { room.setReady(phase == 1 && !buffering) }
+        DisposableEffect(room) { onDispose { room.setReady(false) } }
+        val gatherAt = room.info?.gather ?: 0L
+        LaunchedEffect(gatherAt) {
+            if (!room.isHost || gatherAt <= 0L) return@LaunchedEffect
+            var okSince = 0L
+            val t0 = System.currentTimeMillis()
+            while (true) {
+                delay(400)
+                val allReady = room.members.isNotEmpty() && room.members.none { it.buf } && !room.myBuf
+                val now = System.currentTimeMillis()
+                if (allReady) { if (okSince == 0L) okSince = now } else okSince = 0L
+                if ((okSince != 0L && now - okSince > 1200) || now - t0 > 90_000) { room.endGather(player.currentPosition); break }
+            }
+        }
+    }
+
     // Sinkron nobar: ikuti keadaan ruangan + koreksi selisih waktu berkala
     if (room != null) {
         val lc = LocalLifecycleOwner.current.lifecycle
@@ -436,6 +455,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                         BarButton(Ic.Quality, "Kualitas · " + (if (s.quality == 0) "Otomatis" else "${s.quality}p")) { panel = "quality" }
                         BarButton(Ic.Speed, "Kecepatan · ${fmtSpeed(s.speed)}") { panel = "speed" }
                         BarButton(Ic.Crop, "Crop · " + (if (s.cropOn && s.hasCrop) "Aktif" else "Mati")) { panel = "crop" }
+                        if (room != null) BarButton(Ic.Star, "Reaksi") { panel = "react" }
                         if (room != null) BarButton(if (room.voiceOn && room.micOn) Ic.Mic else Ic.MicOff, if (!room.voiceOn) "Suara" else if (room.micOn) "Mik aktif" else "Mik mati") { micAct?.invoke() }
                         else if (next != null) BarButton(Ic.Next, "Berikutnya") { onNext(next) }
                     }
@@ -451,6 +471,12 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                     .verticalScroll(rememberScrollState()),
             ) {
                 when (panel) {
+                    "react" -> if (room != null) {
+                        PanelTitle("Reaksi")
+                        Box(Modifier.padding(horizontal = 12.dp)) { ReactionBar(room) }
+                        Spacer(Modifier.height(10.dp))
+                        PanelItem(if (s.floatChat) "Chat & reaksi melayang: tampil" else "Chat & reaksi melayang: sembunyi", s.floatChat) { s.updateFloatChat(!s.floatChat) }
+                    }
                     "quality" -> {
                         PanelTitle("Kualitas video")
                         PanelItem("Otomatis (terbaik)", s.quality == 0) { s.setQualityPref(0); applyQuality(variants, 0, curVar, player) { curVar = it; startPlay(it, player.currentPosition) }; panel = null }
@@ -499,7 +525,13 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
 
         // Pesan chat melayang di atas video saat panel chat tertutup
         if (room != null && !chatOpen && phase == 1) {
-            ChatOverlay(room, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 20.dp, top = 72.dp).fillMaxWidth(0.6f))
+            if (s.floatChat) ChatOverlay(room, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 20.dp, top = 72.dp).fillMaxWidth(0.6f))
+        }
+        if (room != null && s.floatChat && phase == 1) ReactionLayer(room, Modifier.fillMaxSize())
+        if (room != null && (room.info?.gather ?: 0L) > 0) {
+            val waitN = room.members.count { it.buf }
+            Text("Menunggu semua siap… ($waitN belum siap)", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 64.dp).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = .6f)).padding(horizontal = 16.dp, vertical = 8.dp))
         }
 
         // Kunci layar: semua sentuhan (kecerahan, volume, geser, ketuk) diblokir, hanya tombol buka kunci yang aktif
@@ -515,7 +547,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
             }
         }
     }
-    if (chatOpen && room != null) ChatDock(room, { chatOpen = false }, Modifier.width(300.dp).fillMaxHeight())
+    if (chatOpen && room != null) ChatDock(room, { chatOpen = false }, onGather = { room.gather(player.currentPosition) }, modifier = Modifier.width(300.dp).fillMaxHeight())
     }
 }
 

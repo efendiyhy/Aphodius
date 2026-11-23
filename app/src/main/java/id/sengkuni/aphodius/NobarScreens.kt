@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.withStyle
@@ -109,9 +110,94 @@ fun ChatBox(room: NobarRoom, modifier: Modifier = Modifier, size: Int = 15) {
     }
 }
 
+/** Deretan peserta: avatar + titik status (hijau siap, kuning buffering/belum siap). Host bisa mengeluarkan peserta. */
+@Composable
+fun MemberStrip(room: NobarRoom, modifier: Modifier = Modifier) {
+    var target by remember { mutableStateOf<NbMember?>(null) }
+    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        room.members.forEach { m ->
+            val canKick = room.isHost && m.uid != room.me
+            Column(
+                Modifier.clip(RoundedCornerShape(10.dp)).then(if (canKick) Modifier.clickable { target = m } else Modifier).padding(horizontal = 2.dp, vertical = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box {
+                    Avatar(m.name, 34)
+                    Box(Modifier.align(Alignment.BottomEnd).size(11.dp).clip(androidx.compose.foundation.shape.CircleShape).background(C.Navy).padding(2.dp).clip(androidx.compose.foundation.shape.CircleShape).background(if (m.buf) C.Gold else Color(0xFF3DDC84)))
+                }
+                Text((if (m.uid == room.info?.host) "★ " else "") + m.name.take(9), color = Color.White, fontSize = 11.sp, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+                Text(if (m.buf) "buffering" else "siap", color = if (m.buf) C.Gold else C.Muted, fontSize = 10.sp)
+            }
+        }
+    }
+    target?.let { m ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { target = null },
+            containerColor = C.Surface,
+            title = { Text("Keluarkan ${m.name}?", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold) },
+            text = { Text("Dia tidak bisa masuk lagi ke ruangan ini.", color = C.Muted, fontSize = 13.sp) },
+            confirmButton = { Text("KELUARKAN", color = C.Aqua, fontWeight = FontWeight.Black, fontSize = 13.sp, modifier = Modifier.clickable { room.kick(m.uid); target = null }.padding(12.dp)) },
+            dismissButton = { Text("BATAL", color = C.Muted, fontSize = 13.sp, modifier = Modifier.clickable { target = null }.padding(12.dp)) },
+        )
+    }
+}
+
+val REACTIONS = listOf("👍", "😂", "😮", "❤️", "🔥", "👏")
+
+@Composable
+fun ReactionBar(room: NobarRoom, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        REACTIONS.forEach { e ->
+            Box(Modifier.size(48.dp).clip(androidx.compose.foundation.shape.CircleShape).background(C.SurfaceHigh).clickable { room.react(e) }, contentAlignment = Alignment.Center) {
+                Text(e, fontSize = 22.sp)
+            }
+        }
+    }
+}
+
+/** Emoji reaksi melayang naik di atas video. */
+@Composable
+fun ReactionLayer(room: NobarRoom, modifier: Modifier = Modifier) {
+    var items by remember { mutableStateOf(listOf<NbMsg>()) }
+    var lastId by remember { mutableStateOf(room.reactions.lastOrNull()?.id ?: "") }
+    val tail = room.reactions.lastOrNull()?.id
+    LaunchedEffect(tail) {
+        val rs = room.reactions
+        val idx = rs.indexOfFirst { it.id == lastId }
+        val fresh = if (idx >= 0) rs.drop(idx + 1) else rs.takeLast(3)
+        lastId = tail ?: lastId
+        if (fresh.isNotEmpty()) items = (items + fresh).takeLast(12)
+    }
+    Box(modifier) {
+        items.forEach { m ->
+            key(m.id) { FloatingEmoji(m, Modifier.align(Alignment.BottomEnd)) { items = items.filter { it.id != m.id } } }
+        }
+    }
+}
+
+@Composable
+private fun FloatingEmoji(m: NbMsg, modifier: Modifier, onDone: () -> Unit) {
+    val prog = remember { androidx.compose.animation.core.Animatable(0f) }
+    val seed = (m.id.hashCode() and 0x7fffffff) % 6
+    LaunchedEffect(Unit) {
+        prog.animateTo(1f, androidx.compose.animation.core.tween(2800, easing = androidx.compose.animation.core.LinearEasing))
+        onDone()
+    }
+    Column(
+        modifier.padding(end = (24 + seed * 26).dp, bottom = 96.dp).graphicsLayer {
+            translationY = -prog.value * 380.dp.toPx()
+            alpha = (1f - prog.value * prog.value).coerceIn(0f, 1f)
+        },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(m.text, fontSize = 38.sp)
+        Text(m.name.take(10), color = Color.White.copy(alpha = .85f), fontSize = 11.sp)
+    }
+}
+
 /** Panel chat di sisi kanan pemutar: hanya chat dan jumlah yang bergabung. */
 @Composable
-fun ChatDock(room: NobarRoom, onClose: () -> Unit, modifier: Modifier = Modifier) {
+fun ChatDock(room: NobarRoom, onClose: () -> Unit, onGather: () -> Unit = {}, modifier: Modifier = Modifier) {
     Column(modifier.background(C.Navy).statusBarsPadding().navigationBarsPadding().imePadding().padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -120,7 +206,16 @@ fun ChatDock(room: NobarRoom, onClose: () -> Unit, modifier: Modifier = Modifier
             }
             IconBtn(Ic.Close, "Tutup chat", onClose, size = 34.dp)
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
+        MemberStrip(room)
+        if (room.isHost) {
+            Spacer(Modifier.height(8.dp))
+            val waiting = (room.info?.gather ?: 0L) > 0
+            AButton(if (waiting) "MENUNGGU SEMUA SIAP…" else "TUNGGU SEMUA SIAP", null, !waiting, Modifier.fillMaxWidth().height(40.dp)) { if (!waiting) onGather() }
+        }
+        Spacer(Modifier.height(8.dp))
+        ReactionBar(room)
+        Spacer(Modifier.height(8.dp))
         ChatBox(room, Modifier.weight(1f), size = 15)
     }
 }
@@ -179,17 +274,9 @@ private fun SmallChip(text: String, active: Boolean, icon: androidx.compose.ui.g
 fun LobbyPanel(room: NobarRoom, modifier: Modifier = Modifier) {
     val mic = rememberMicAction(room)
     Column(modifier) {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("${room.members.size}/$MAX_MEMBERS", color = C.Muted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            room.members.forEach { m ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(m.name, 22)
-                    Spacer(Modifier.width(5.dp))
-                    Text(m.name + if (m.uid == room.info?.host) " ★" else "", color = Color.White, fontSize = 12.sp, maxLines = 1)
-                    if (m.voice) { Spacer(Modifier.width(3.dp)); Icon(if (m.mic) Ic.Mic else Ic.MicOff, null, tint = if (m.mic) C.Aqua else C.Subtle, modifier = Modifier.size(12.dp)) }
-                }
-            }
-        }
+        Text("${room.members.size}/$MAX_MEMBERS bergabung", color = C.Muted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        MemberStrip(room)
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             SmallChip(if (!room.voiceOn) "Nyalakan suara" else if (room.micOn) "Mik aktif" else "Mik mati", room.voiceOn && room.micOn, if (room.voiceOn && room.micOn) Ic.Mic else Ic.MicOff) { mic() }

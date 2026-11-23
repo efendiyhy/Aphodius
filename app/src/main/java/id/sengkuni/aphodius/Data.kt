@@ -164,6 +164,9 @@ class Store(ctx: Context) {
     var pinHash: String
         get() = sp.getString("pinHash", "") ?: ""
         set(v) { sp.edit().putString("pinHash", v).apply() }
+    var floatChat: Boolean
+        get() = sp.getBoolean("floatChat", true)
+        set(v) { sp.edit().putBoolean("floatChat", v).apply() }
     var thumbPoster: Boolean
         get() = sp.getBoolean("thumbPoster", true)
         set(v) { sp.edit().putBoolean("thumbPoster", v).apply() }
@@ -209,6 +212,7 @@ class AppState(ctx: Context) {
     var crashInfo by mutableStateOf<String?>(null)
     var allFilms by mutableStateOf<List<Film>>(emptyList())
     var surround by mutableStateOf(store.surround)
+    var floatChat by mutableStateOf(store.floatChat)
     var thumbPoster by mutableStateOf(store.thumbPoster.also { Thumbs.enabled = it })
     var eq by mutableStateOf(store.eq)
     var adults by mutableStateOf(store.adults && store.pinHash.isNotEmpty())
@@ -324,6 +328,7 @@ class AppState(ctx: Context) {
     fun setSpeedPref(s: Float) { speed = s; store.speed = s }
     val hasCrop: Boolean get() = crop.any { it > 0.001f }
     fun useCrop(b: Boolean) { cropOn = b; store.cropOn = b }
+    fun updateFloatChat(b: Boolean) { floatChat = b; store.floatChat = b }
     fun updateSurround(b: Boolean) { surround = b; store.surround = b }
     fun updateThumbPoster(b: Boolean) { thumbPoster = b; store.thumbPoster = b; Thumbs.enabled = b }
     fun updateEq(l: List<Float>) { eq = l; store.eq = l }

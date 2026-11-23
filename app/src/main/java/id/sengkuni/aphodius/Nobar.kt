@@ -51,13 +51,13 @@ private val DB_CANDIDATES = listOf(
 private const val CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 private val SV = JSONObject().put(".sv", "timestamp")
 
-data class NbInfo(val host: String, val filmId: String, val filmName: String, val ctl: String, val created: Long)
+data class NbInfo(val host: String, val filmId: String, val filmName: String, val ctl: String, val created: Long, val gather: Long = 0)
 data class NbPb(val playing: Boolean, val pos: Long, val at: Long, val seq: Long, val by: String) {
     val stamp: String get() = "${seq}_$by"
 }
-data class NbMember(val uid: String, val name: String, val seen: Long, val voice: Boolean, val mic: Boolean)
+data class NbMember(val uid: String, val name: String, val seen: Long, val voice: Boolean, val mic: Boolean, val buf: Boolean = true)
 data class NbHist(val code: String, val filmId: String, val filmName: String, val host: Boolean)
-data class NbMsg(val id: String, val uid: String, val name: String, val text: String)
+data class NbMsg(val id: String, val uid: String, val name: String, val text: String, val react: Boolean = false)
 
 /** Akses REST Firebase: login anonim, pencarian URL database, request biasa. */
 class Fb(ctx: Context) {
@@ -173,6 +173,10 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
     var pb by mutableStateOf(NbPb(false, 0, 0, 0, ""))
     var members by mutableStateOf<List<NbMember>>(emptyList())
     var chat by mutableStateOf<List<NbMsg>>(emptyList())
+    var reactions by mutableStateOf<List<NbMsg>>(emptyList())
+    var kicked by mutableStateOf(false)
+    /** true = HP ini belum siap (belum di pemutar atau sedang buffering). */
+    var myBuf by mutableStateOf(true)
     /** "connecting", "online", "offline", "closed" */
     var status by mutableStateOf("connecting")
     var voiceOn by mutableStateOf(false)
@@ -193,7 +197,7 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
     }
 
     private fun memberJson(): JSONObject = JSONObject()
-        .put("name", nick().ifBlank { "Tamu" }).put("seen", SV).put("voice", voiceOn).put("mic", voiceOn && micOn)
+        .put("name", nick().ifBlank { "Tamu" }).put("seen", SV).put("voice", voiceOn).put("mic", voiceOn && micOn).put("buf", myBuf)
 
     private suspend fun heartbeat() {
         runCatching {
@@ -304,7 +308,7 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
     private fun parse() {
         val r = root ?: return
         r.optJSONObject("info")?.let { i ->
-            info = NbInfo(i.optString("host"), i.optString("film"), i.optString("filmName"), i.optString("ctl", "host"), i.optLong("created"))
+            info = NbInfo(i.optString("host"), i.optString("film"), i.optString("filmName"), i.optString("ctl", "host"), i.optLong("created"), i.optLong("gather"))
         }
         r.optJSONObject("pb")?.let { p ->
             val n = NbPb(p.optBoolean("playing"), p.optLong("pos"), p.optLong("at"), p.optLong("seq"), p.optString("by"))
@@ -313,18 +317,32 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
         val ms = ArrayList<NbMember>()
         r.optJSONObject("members")?.let { m ->
             m.keys().forEach { k ->
-                m.optJSONObject(k)?.let { o -> ms.add(NbMember(k, o.optString("name", "Tamu"), o.optLong("seen"), o.optBoolean("voice"), o.optBoolean("mic"))) }
+                m.optJSONObject(k)?.let { o -> ms.add(NbMember(k, o.optString("name", "Tamu"), o.optLong("seen"), o.optBoolean("voice"), o.optBoolean("mic"), o.optBoolean("buf", true))) }
             }
         }
         val h = info?.host
         members = ms.sortedWith(compareBy({ it.uid != h }, { it.name.lowercase() }))
         val cs = ArrayList<NbMsg>()
+        val rs = ArrayList<NbMsg>()
         r.optJSONObject("chat")?.let { c ->
-            c.keys().asSequence().sorted().toList().takeLast(120).forEach { k ->
-                c.optJSONObject(k)?.let { o -> cs.add(NbMsg(k, o.optString("u"), o.optString("n"), o.optString("m"))) }
+            c.keys().asSequence().sorted().toList().takeLast(160).forEach { k ->
+                c.optJSONObject(k)?.let { o ->
+                    val isR = o.optString("k") == "r"
+                    val m = NbMsg(k, o.optString("u"), o.optString("n"), o.optString("m"), isR)
+                    if (isR) rs.add(m) else cs.add(m)
+                }
             }
         }
         if (cs.size != chat.size || cs.lastOrNull()?.id != chat.lastOrNull()?.id) chat = cs
+        if (rs.lastOrNull()?.id != reactions.lastOrNull()?.id) reactions = rs.takeLast(20)
+        // dikeluarkan host?
+        if (!isHost && r.optJSONObject("kick")?.has(me) == true && !kicked) {
+            kicked = true
+            beatJob?.cancel()
+            android.os.Handler(android.os.Looper.getMainLooper()).post { android.widget.Toast.makeText(ctx, "Kamu dikeluarkan oleh host", android.widget.Toast.LENGTH_LONG).show() }
+            status = "closed"
+            return
+        }
         // sinyal suara untuk saya
         r.optJSONObject("sig")?.optJSONObject(me)?.let { sg ->
             sg.keys().asSequence().sorted().toList().forEach { k ->
@@ -357,6 +375,46 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
         val id = "${System.currentTimeMillis()}_${me.take(4)}"
         val body = JSONObject().put("u", me).put("n", nick().ifBlank { "Tamu" }).put("m", t).toString()
         scope.launch { runCatching { fb.req("PUT", "rooms/$code/chat/$id", body) } }
+    }
+
+    /** Reaksi emoji: disimpan di jalur chat dengan penanda k = "r", ditampilkan melayang. */
+    fun react(emoji: String) {
+        val id = "${System.currentTimeMillis()}_${me.take(4)}"
+        val body = JSONObject().put("u", me).put("n", nick().ifBlank { "Tamu" }).put("m", emoji.take(8)).put("k", "r").toString()
+        scope.launch { runCatching { fb.req("PUT", "rooms/$code/chat/$id", body) } }
+    }
+
+    /** Host: keluarkan peserta (diblokir masuk lagi ke ruangan ini). */
+    fun kick(uid: String) {
+        if (!isHost || uid == me) return
+        scope.launch {
+            runCatching { fb.req("PUT", "rooms/$code/kick/$uid", "true") }
+            runCatching { fb.req("DELETE", "rooms/$code/members/$uid") }
+        }
+    }
+
+    /** Lapor ke ruangan apakah pemutar HP ini sudah siap (tidak buffering). */
+    fun setReady(ready: Boolean) {
+        val nb = !ready
+        if (nb == myBuf) return
+        myBuf = nb
+        scope.launch { runCatching { fb.req("PUT", "rooms/$code/members/$me/buf", nb.toString()) } }
+    }
+
+    /** Host: jeda di posisi ini dan tunggu semua anggota siap. */
+    fun gather(pos: Long) {
+        if (!isHost) return
+        publish(false, pos)
+        info = info?.copy(gather = serverNow())
+        scope.launch { runCatching { fb.req("PUT", "rooms/$code/info/gather", serverNow().toString()) } }
+    }
+
+    /** Host: semua siap (atau habis waktu) -> putar bersamaan. */
+    fun endGather(pos: Long) {
+        if (!isHost) return
+        info = info?.copy(gather = 0)
+        scope.launch { runCatching { fb.req("PUT", "rooms/$code/info/gather", "0") } }
+        publish(true, pos)
     }
 
     internal fun sendSig(to: String, type: String, data: String) {
@@ -676,6 +734,8 @@ class Nobar(ctx: Context) {
                 val alive = keys.count { k -> now - (j.optJSONObject(k)?.optLong("seen") ?: 0L) <= 90_000 && k != fb.uid }
                 if (alive >= MAX_MEMBERS) { error = "Ruangan penuh (maks $MAX_MEMBERS orang)"; return }
             }
+            val kk = fb.req("GET", "rooms/$code/kick/${fb.uid}")
+            if (kk.first == 200 && kk.second.trim() == "true") { error = "Kamu dikeluarkan dari ruangan ini"; forget(code); return }
             val r = make(code, nick)
             val err = r.enter()
             if (err != null) { error = err; return }
