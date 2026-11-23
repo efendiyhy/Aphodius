@@ -20,6 +20,14 @@ Rilis baru: naikkan angka di `version.txt` lalu push ke `main` — CI membuat ta
 - Mockup UI: `portrait/`, `landscape/`, `00-design-system.svg`; buka `preview.html` untuk melihat semuanya. Bangkitkan ulang dengan `python3 tools/branding/mockups.py`.
 - Warna utama Aqua `#22C7EC`, aksen emas scarab `#F2A33A`, latar `#050D16`. Detail ada di `00-design-system.svg`.
 
+## v1.5.0
+- Fitur Bagikan dihapus.
+- Nama film tampil di bawah poster (dipotong dengan … bila terlalu panjang).
+- Movie dan Series dikelompokkan per Genre, Negara, atau Tahun.
+- Bagian Rekomendasi dan Populer di Beranda, Movie, dan Series.
+- Tab Series baru dengan daftar episode, lanjut menonton per episode, dan episode berikutnya otomatis.
+- Data baru: negara, rating, populer, rekomendasi, tipe (film/series), episodes.
+
 ## v1.2.0
 - Nama sapaan saat pertama kali dipasang, profil lokal, dan kunci aplikasi (PIN 4 digit + sidik jari opsional).
 - Pemutar: crop manual (tombol Crop) — geser 4 garis, simpan, berlaku global; bisa dimatikan/dihapus (mati = video tampil apa adanya).

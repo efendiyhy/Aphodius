@@ -24,7 +24,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 sealed interface Route {
     data class Detail(val id: String) : Route
-    data class Play(val id: String) : Route
+    data class Play(val id: String, val ep: Int = -1) : Route
     data object Search : Route
     data object Profile : Route
 }
@@ -91,15 +91,21 @@ fun App(s: AppState) {
     BackHandler(enabled = top is Route.Detail || top is Route.Search) { stack = stack.dropLast(1) }
 
     fun open(f: Film) { stack = stack + Route.Detail(f.id) }
-    fun play(f: Film) { stack = stack + Route.Play(f.id) }
+    fun play(f: Film) { stack = stack + Route.Play(f.id, if (f.isSeries) s.resumeEp(f) else -1) }
 
     Box(Modifier.fillMaxSize().background(C.Navy)) {
         when (top) {
             is Route.Play -> {
                 val f = s.find(top.id)
-                if (f == null) { stack = stack.dropLast(1) } else {
+                if (f == null) { stack = stack.dropLast(1) } else if (f.isSeries && top.ep in f.episodes.indices) {
+                    val cur = s.epFilm(f, top.ep)
+                    val next = if (top.ep + 1 < f.episodes.size) s.epFilm(f, top.ep + 1) else null
+                    key(cur.id) {
+                        PlayerScreen(cur, next, s, onBack = { stack = stack.dropLast(1) }, onNext = { stack = stack.dropLast(1) + Route.Play(f.id, top.ep + 1) })
+                    }
+                } else {
                     val idx = s.films.indexOfFirst { it.id == f.id }
-                    val next = if (s.films.size > 1) s.films[(idx + 1) % s.films.size] else null
+                    val next = if (s.films.size > 1) s.films[(idx + 1) % s.films.size].takeIf { !it.isSeries } else null
                     key(f.id) {
                         PlayerScreen(f, next, s, onBack = { stack = stack.dropLast(1) }, onNext = { n -> stack = stack.dropLast(1) + Route.Play(n.id) })
                     }
@@ -107,7 +113,7 @@ fun App(s: AppState) {
             }
             is Route.Detail -> {
                 val f = s.find(top.id)
-                if (f == null) { stack = stack.dropLast(1) } else DetailScreen(f, s, onBack = { stack = stack.dropLast(1) }, onPlay = { play(f) })
+                if (f == null) { stack = stack.dropLast(1) } else DetailScreen(f, s, onBack = { stack = stack.dropLast(1) }, onPlay = { play(f) }, onPlayEp = { i -> stack = stack + Route.Play(f.id, i) })
             }
             Route.Search -> SearchScreen(s, onBack = { stack = stack.dropLast(1) }, onOpen = ::open, onPlay = ::play)
             Route.Profile -> ProfileScreen(s, onBack = { stack = stack.dropLast(1) })
@@ -117,7 +123,8 @@ fun App(s: AppState) {
                     when (tab) {
                         Tab.Home -> HomeScreen(s, ::open, ::play, onSearch = { stack = stack + Route.Search }, onProfile = { stack = stack + Route.Profile })
                         Tab.New -> NewScreen(s, ::open, ::play)
-                        Tab.Movie -> MovieScreen(s, ::open)
+                        Tab.Movie -> BrowseScreen(s, false, ::open)
+                        Tab.Series -> BrowseScreen(s, true, ::open)
                         Tab.MyList -> MyListScreen(s, ::open)
                     }
                 }

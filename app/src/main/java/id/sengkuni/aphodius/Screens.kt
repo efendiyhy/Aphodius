@@ -48,7 +48,7 @@ import java.util.Date
 import java.util.Locale
 
 enum class Tab(val label: String, val icon: ImageVector) {
-    Home("Beranda", Ic.Home), New("Baru", Ic.Eps), Movie("Movie", Ic.Play), MyList("Daftarku", Ic.Bookmark)
+    Home("Beranda", Ic.Home), New("Baru", Ic.Eps), Movie("Movie", Ic.Play), Series("Series", Ic.Series), MyList("Daftarku", Ic.Bookmark)
 }
 
 // Gradien dasar poster pengganti (sama dengan mockup di folder portrait/ dan landscape/)
@@ -61,9 +61,20 @@ private val gradients = listOf(
     listOf(Color(0xFF0E94C4), Color(0xFF04121F)),
 )
 
-fun meta(f: Film): String = listOfNotNull(f.year?.toString(), f.genres.takeIf { it.isNotEmpty() }?.joinToString(" • ")).joinToString(" • ")
+fun meta(f: Film): String = listOfNotNull(f.year?.toString(), f.country.takeIf { it.isNotBlank() }, f.genres.takeIf { it.isNotEmpty() }?.joinToString(" • ")).joinToString(" • ")
+
+val Film.kind: String get() = if (isSeries) "Series" else "Film"
 
 /* ---------------- Poster ---------------- */
+/** Poster + judul di bawahnya (maks 1 baris, dipotong dengan …). */
+@Composable
+fun PosterCard(f: Film, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(modifier.clickable(onClick = onClick)) {
+        Poster(f, Modifier.fillMaxWidth().aspectRatio(2f / 3f))
+        Text(f.name, fontSize = 12.sp, color = Color.White.copy(alpha = .88f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 7.dp))
+    }
+}
+
 @Composable
 fun Poster(film: Film, modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp)) {
     val seed = film.id.hashCode() and 0x7fffffff
@@ -178,7 +189,7 @@ fun PosterRow(films: List<Film>, s: AppState, onOpen: (Film) -> Unit, showProgre
                 Box {
                     Poster(f, Modifier.fillMaxWidth().aspectRatio(2f / 3f))
                     if (showProgress) {
-                        val p = s.progress[f.id]?.frac ?: 0f
+                        val p = s.lastProg(f)?.frac ?: 0f
                         Box(
                             Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(44.dp)
                                 .clip(RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp))
@@ -262,12 +273,12 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
             val cols = if (land) 6 else 3
             items(s.films.filter { genre in it.genres }.chunked(cols)) { rowFilms ->
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    rowFilms.forEach { f -> Poster(f, Modifier.weight(1f).aspectRatio(2f / 3f).clickable { onOpen(f) }) }
+                    rowFilms.forEach { f -> PosterCard(f, Modifier.weight(1f)) { onOpen(f) } }
                     repeat(cols - rowFilms.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         } else {
-            val hero = s.films.first()
+            val hero = s.films.firstOrNull { it.recommended } ?: s.films.first()
             item {
                 val h = if (land) 280.dp else 460.dp
                 Box(Modifier.padding(top = 16.dp, start = 16.dp, end = 16.dp).fillMaxWidth().height(h).clip(RoundedCornerShape(24.dp)).clickable { onOpen(hero) }) {
@@ -292,10 +303,20 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
                     }
                 }
             }
-            val cont = s.films.filter { (s.progress[it.id]?.frac ?: 0f) in 0.02f..0.95f }.sortedByDescending { s.progress[it.id]?.ts ?: 0L }
+            val cont = s.films.filter { (s.lastProg(it)?.frac ?: 0f) in 0.02f..0.95f }.sortedByDescending { s.lastProg(it)?.ts ?: 0L }
             if (cont.isNotEmpty()) {
                 item { SectionTitle("Lanjutkan Menonton") }
                 item { PosterRow(cont, s, onPlay, showProgress = true) }
+            }
+            val rec = s.films.filter { it.recommended }
+            if (rec.isNotEmpty()) {
+                item { SectionTitle("Rekomendasi untukmu") }
+                item { PosterRow(rec, s, onOpen) }
+            }
+            val pop = s.films.filter { it.popular }
+            if (pop.isNotEmpty()) {
+                item { SectionTitle("Populer") }
+                item { PosterRow(pop, s, onOpen) }
             }
             item { SectionTitle("Baru Ditambah") }
             item { PosterRow(s.films.take(20), s, onOpen) }
@@ -316,7 +337,7 @@ fun SearchScreen(s: AppState, onBack: () -> Unit, onOpen: (Film) -> Unit, onPlay
     var q by remember { mutableStateOf("") }
     val list = remember(q, s.films) {
         val k = q.trim().lowercase()
-        if (k.isEmpty()) s.films else s.films.filter { (it.name + " " + (it.year ?: "") + " " + it.genres.joinToString(" ")).lowercase().contains(k) }
+        if (k.isEmpty()) s.films else s.films.filter { (it.name + " " + (it.year ?: "") + " " + it.country + " " + it.genres.joinToString(" ")).lowercase().contains(k) }
     }
     val fieldShape = RoundedCornerShape(16.dp)
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -330,7 +351,7 @@ fun SearchScreen(s: AppState, onBack: () -> Unit, onOpen: (Film) -> Unit, onPlay
             Icon(Ic.Search, null, tint = C.Muted, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(10.dp))
             Box(Modifier.weight(1f)) {
-                if (q.isEmpty()) Text("Cari film, tahun, genre", color = C.Subtle, fontSize = 15.sp)
+                if (q.isEmpty()) Text("Cari judul, negara, tahun, genre", color = C.Subtle, fontSize = 15.sp)
                 BasicTextField(q, { q = it }, singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontFamily = AFont, color = Color.White, fontSize = 15.sp), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth())
             }
             if (q.isNotEmpty()) Icon(Ic.Close, "Hapus", tint = C.Muted, modifier = Modifier.size(20.dp).clickable { q = "" })
@@ -346,7 +367,7 @@ fun SearchScreen(s: AppState, onBack: () -> Unit, onOpen: (Film) -> Unit, onPlay
                     Poster(f, Modifier.width(56.dp).aspectRatio(2f / 3f), RoundedCornerShape(10.dp))
                     Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
                         Text(f.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text("Film" + (f.year?.let { " • $it" } ?: ""), color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                        Text(listOfNotNull(f.kind, f.year?.toString(), f.country.takeIf { it.isNotBlank() }).joinToString(" • "), color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
                     }
                     IconBtn(Ic.PlayFill, "Putar", { onPlay(f) }, tint = C.Aqua)
                 }
@@ -421,7 +442,7 @@ fun MyListScreen(s: AppState, onOpen: (Film) -> Unit) {
         }
         items(list.chunked(cols)) { rowFilms ->
             Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                rowFilms.forEach { f -> Poster(f, Modifier.weight(1f).aspectRatio(2f / 3f).clickable { onOpen(f) }) }
+                rowFilms.forEach { f -> PosterCard(f, Modifier.weight(1f)) { onOpen(f) } }
                 repeat(cols - rowFilms.size) { Spacer(Modifier.weight(1f)) }
             }
         }
@@ -430,10 +451,10 @@ fun MyListScreen(s: AppState, onOpen: (Film) -> Unit) {
 
 /* ---------------- DETAIL ---------------- */
 @Composable
-fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit) {
+fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit, onPlayEp: (Int) -> Unit = {}) {
     val ctx = LocalContext.current
     val fav = f.id in s.favs
-    val prog = s.progress[f.id]
+    val prog = s.lastProg(f)
     val resume = prog != null && prog.frac in 0.02f..0.95f
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         val land = LocalConfiguration.current.screenWidthDp > 600
@@ -442,7 +463,6 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit) {
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .45f), Color.Transparent, C.Navy))))
             Row(Modifier.align(Alignment.TopCenter).statusBarsPadding().fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 IconBtn(Ic.Back, "Kembali", onBack, glass = true)
-                IconBtn(Ic.Share, "Bagikan", { shareFilm(ctx, f) }, glass = true)
             }
             Box(Modifier.size(64.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f)).border(2.dp, Color.White, CircleShape).clickable { onPlay() }, contentAlignment = Alignment.Center) {
                 Icon(Ic.PlayFill, "Putar", tint = Color.White, modifier = Modifier.size(28.dp))
@@ -450,7 +470,10 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit) {
         }
         Column(Modifier.padding(horizontal = 16.dp)) {
             Text(f.name, fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.Black)
-            Text("Film" + (f.year?.let { " • $it" } ?: ""), color = C.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+            Text(
+                listOfNotNull(f.kind, f.year?.toString(), f.country.takeIf { it.isNotBlank() }, f.rating.takeIf { it > 0 }?.let { "★ %.1f".format(it) }).joinToString(" • "),
+                color = C.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp),
+            )
             if (f.genres.isNotEmpty()) {
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
@@ -475,7 +498,27 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ActionTile(if (fav) Ic.Check else Ic.Plus, if (fav) "Di Daftarku" else "Daftarku", Modifier.weight(1f)) { s.toggleFav(f.id) }
-                ActionTile(Ic.Share, "Bagikan", Modifier.weight(1f)) { shareFilm(ctx, f) }
+            }
+            if (f.isSeries && f.episodes.isNotEmpty()) {
+                SectionTitle("Episode (${f.episodes.size})")
+                f.episodes.forEachIndexed { i, e ->
+                    val ep = s.progress[s.epFilm(f, i).id]
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(14.dp)).background(C.Surface).clickable { onPlayEp(i) }.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("${e.n}", fontSize = 18.sp, fontWeight = FontWeight.Black, color = C.Aqua, modifier = Modifier.width(34.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(e.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (ep != null && ep.frac > 0.02f) {
+                                Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(C.SurfaceHigh)) {
+                                    Box(Modifier.fillMaxWidth(ep.frac).fillMaxHeight().background(C.Aqua))
+                                }
+                            }
+                        }
+                        Icon(Ic.PlayFill, "Putar", tint = C.Aqua, modifier = Modifier.size(22.dp))
+                    }
+                }
             }
             Spacer(Modifier.height(28.dp))
         }
@@ -494,10 +537,6 @@ private fun ActionTile(icon: ImageVector, label: String, modifier: Modifier, onC
     }
 }
 
-fun shareFilm(ctx: Context, f: Film) {
-    val i = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "${f.name}\n${f.link}")
-    ctx.startActivity(Intent.createChooser(i, "Bagikan").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-}
 
 fun fmtTime(ms: Long): String {
     val t = (ms / 1000).coerceAtLeast(0)
@@ -532,18 +571,44 @@ fun OnboardingScreen(onDone: (String) -> Unit) {
     }
 }
 
-/* ---------------- MOVIE (per genre) ---------------- */
+/* ---------------- MOVIE / SERIES (genre, negara, tahun) ---------------- */
 @Composable
-fun MovieScreen(s: AppState, onOpen: (Film) -> Unit) {
-    val groups = remember(s.films) {
-        s.films.flatMap { f -> f.genres.map { it to f } }.groupBy({ it.first }, { it.second }).toSortedMap()
+fun BrowseScreen(s: AppState, series: Boolean, onOpen: (Film) -> Unit) {
+    var mode by remember { mutableStateOf("Genre") }
+    val base = remember(s.films, series) { s.films.filter { it.isSeries == series } }
+    val groups: List<Pair<String, List<Film>>> = remember(base, mode) {
+        when (mode) {
+            "Negara" -> base.groupBy { it.country.ifBlank { "Lainnya" } }.toList().sortedWith(compareBy({ it.first == "Lainnya" }, { -it.second.size }))
+            "Tahun" -> base.groupBy { it.year?.toString() ?: "Tanpa tahun" }.toList().sortedWith(compareBy({ it.first == "Tanpa tahun" }, { it.first }.let { c -> { p: Pair<String, List<Film>> -> -(p.first.toIntOrNull() ?: 0) } }))
+            else -> base.flatMap { f -> if (f.genres.isEmpty()) listOf("Lainnya" to f) else f.genres.map { it to f } }
+                .groupBy({ it.first }, { it.second }).toList().sortedWith(compareBy({ it.first == "Lainnya" }, { it.first }))
+        }
     }
-    val none = remember(s.films) { s.films.filter { it.genres.isEmpty() } }
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(bottom = 20.dp)) {
-        item { Text("Movie", fontSize = 26.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) }
-        if (s.films.isEmpty()) item { EmptyState(s, "Belum ada film.") }
+        item { Text(if (series) "Series" else "Movie", fontSize = 26.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) }
+        if (base.isEmpty()) item {
+            if (series) Text("Belum ada series.\nTambahkan lewat web Master Stream dengan tipe Series.", color = C.Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(40.dp))
+            else EmptyState(s, "Belum ada film.")
+        }
+        if (base.isNotEmpty()) {
+            item {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(listOf("Genre", "Negara", "Tahun")) { m -> Chip(m, mode == m) { mode = m } }
+                }
+            }
+            val rec = base.filter { it.recommended }
+            if (rec.isNotEmpty()) {
+                item { SectionTitle("Rekomendasi") }
+                item { PosterRow(rec, s, onOpen) }
+            }
+            val pop = base.filter { it.popular }
+            if (pop.isNotEmpty()) {
+                item { SectionTitle("Populer") }
+                item { PosterRow(pop, s, onOpen) }
+            }
+        }
         groups.forEach { (g, list) ->
-            item(key = "g_$g") {
+            item(key = "g_${mode}_$g") {
                 Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(7.dp).rotate(45f).background(C.Aqua))
                     Spacer(Modifier.width(10.dp))
@@ -552,10 +617,6 @@ fun MovieScreen(s: AppState, onOpen: (Film) -> Unit) {
                 }
                 PosterRow(list, s, onOpen)
             }
-        }
-        if (none.isNotEmpty()) item(key = "g_none") {
-            SectionTitle("Lainnya")
-            PosterRow(none, s, onOpen)
         }
     }
 }

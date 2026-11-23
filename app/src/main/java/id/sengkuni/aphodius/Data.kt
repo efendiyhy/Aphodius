@@ -19,6 +19,8 @@ val DATA_URLS = listOf(
 private const val ADULTS_HASH = "f9df6085f1c1e0a24a806a19428ff92a5f5ad23dd4fe1ada92275c470b04bfb0"
 const val UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
 
+data class Episode(val n: Int, val title: String, val link: String)
+
 data class Film(
     val id: String,
     val link: String,
@@ -28,7 +30,14 @@ data class Film(
     val poster: String,
     val added: Long,
     val synopsis: String = "",
+    val country: String = "",
+    val type: String = "film",          // "film" atau "series"
+    val popular: Boolean = false,
+    val recommended: Boolean = false,
+    val rating: Double = 0.0,
+    val episodes: List<Episode> = emptyList(),
 ) {
+    val isSeries: Boolean get() = type.equals("series", ignoreCase = true)
     /** Film dewasa: bergenre 21+ (disembunyikan kecuali fitur Adults aktif). */
     val isAdult: Boolean get() = genres.any { it.trim().equals("21+", ignoreCase = true) }
 }
@@ -90,6 +99,16 @@ fun parseFilms(text: String): Pair<List<Film>, List<String>> {
         val g = ArrayList<String>()
         f.optJSONArray("genres")?.let { ga -> for (j in 0 until ga.length()) g.add(ga.optString(j)) }
         val poster = if (f.isNull("poster")) "" else f.optString("poster", "")
+        val eps = ArrayList<Episode>()
+        f.optJSONArray("episodes")?.let { ea ->
+            for (j in 0 until ea.length()) {
+                val e = ea.optJSONObject(j) ?: continue
+                val el = e.optString("link", "")
+                if (el.isBlank()) continue
+                eps.add(Episode(e.optInt("n", j + 1), e.optString("title", "").ifBlank { "Episode ${e.optInt("n", j + 1)}" }, el))
+            }
+            eps.sortBy { it.n }
+        }
         films.add(
             Film(
                 id = f.optString("id").ifBlank { link },
@@ -100,6 +119,12 @@ fun parseFilms(text: String): Pair<List<Film>, List<String>> {
                 poster = poster,
                 added = f.optLong("added", 0L),
                 synopsis = if (f.isNull("synopsis")) "" else f.optString("synopsis", "").trim(),
+                country = if (f.isNull("country")) "" else f.optString("country", "").trim(),
+                type = if (f.isNull("type")) "film" else f.optString("type", "film").trim().lowercase(),
+                popular = f.optBoolean("popular", false),
+                recommended = f.optBoolean("recommended", false),
+                rating = f.optDouble("rating", 0.0).let { if (it.isNaN()) 0.0 else it },
+                episodes = eps,
             )
         )
     }
@@ -195,6 +220,22 @@ class AppState(ctx: Context) {
     var update by mutableStateOf<UpdateInfo?>(null)
 
     fun find(id: String): Film? = films.firstOrNull { it.id == id }
+
+    /** Progres terakhir sebuah judul. Untuk series: episode yang terakhir ditonton. */
+    fun lastProg(f: Film): Prog? =
+        if (f.isSeries) progress.filterKeys { it.startsWith(f.id + "#") }.values.maxByOrNull { it.ts } else progress[f.id]
+
+    fun epFilm(f: Film, i: Int): Film {
+        val e = f.episodes[i]
+        return f.copy(id = "${f.id}#${e.n}", link = e.link, name = "${f.name} • Ep ${e.n}", type = "film", episodes = emptyList())
+    }
+
+    /** Indeks episode yang sebaiknya diputar: lanjutkan yang terakhir, atau episode berikutnya bila sudah selesai. */
+    fun resumeEp(f: Film): Int {
+        if (f.episodes.isEmpty()) return -1
+        val best = f.episodes.indices.mapNotNull { i -> progress[epFilm(f, i).id]?.let { i to it } }.maxByOrNull { it.second.ts } ?: return 0
+        return if (best.second.frac > 0.95f) (best.first + 1).coerceAtMost(f.episodes.lastIndex) else best.first
+    }
 
     private fun apply(text: String): Boolean = try {
         val (f, g) = parseFilms(text)
