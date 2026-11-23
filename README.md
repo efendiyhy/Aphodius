@@ -91,6 +91,7 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 - Chat dan suara langsung (tekan tombol mikrofon sendiri). Surround bioskop dimatikan sementara saat suara aktif.
 - Film dewasa dan Extraordinary tetap bisa dinobarkan; anggota perlu fitur itu aktif di profilnya.
 - Nobar untuk series belum tersedia.
+- Pengaturan baru *Poster dari video*: film tanpa poster memakai thumbnail videonya.
 </details>
 
 <details>

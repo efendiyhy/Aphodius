@@ -80,7 +80,13 @@ fun Poster(film: Film, modifier: Modifier = Modifier, shape: androidx.compose.ui
     val seed = film.id.hashCode() and 0x7fffffff
     val g = gradients[seed % gradients.size]
     Box(modifier.clip(shape).background(Brush.linearGradient(g)), contentAlignment = Alignment.Center) {
-        if (film.poster.isNotBlank()) {
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        val thumb by produceState<String?>(null, film.id, film.poster, Thumbs.enabled) {
+            value = if (Thumbs.enabled && film.poster.isBlank() && !film.isSeries) Thumbs.get(ctx, film.link) else null
+        }
+        if (film.poster.isBlank() && thumb != null) {
+            AsyncImage(thumb, film.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        } else if (film.poster.isNotBlank()) {
             val model: Any = remember(film.poster) {
                 if (film.poster.startsWith("data:")) {
                     try { Base64.decode(film.poster.substringAfter("base64,"), Base64.DEFAULT) } catch (e: Exception) { "" }
@@ -789,6 +795,8 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
             if (s.hasCrop) s.useCrop(!s.cropOn)
         }
         if (s.hasCrop) Text("Hapus crop tersimpan", color = C.Aqua, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).clickable { s.clearCrop() })
+
+        SettingRow("Poster dari video", if (s.thumbPoster) "Aktif — film tanpa poster memakai thumbnail videonya" else "Mati — film tanpa poster memakai gambar pola", s.thumbPoster) { s.updateThumbPoster(!s.thumbPoster) }
 
         SettingHeader("Pembaruan")
         Text("Aphodius v${BuildConfig.VERSION_NAME}", color = C.Muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))

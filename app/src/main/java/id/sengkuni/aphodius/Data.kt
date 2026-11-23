@@ -164,6 +164,9 @@ class Store(ctx: Context) {
     var pinHash: String
         get() = sp.getString("pinHash", "") ?: ""
         set(v) { sp.edit().putString("pinHash", v).apply() }
+    var thumbPoster: Boolean
+        get() = sp.getBoolean("thumbPoster", true)
+        set(v) { sp.edit().putBoolean("thumbPoster", v).apply() }
     var surround: Boolean
         get() = sp.getBoolean("surround", false)
         set(v) { sp.edit().putBoolean("surround", v).apply() }
@@ -206,6 +209,7 @@ class AppState(ctx: Context) {
     var crashInfo by mutableStateOf<String?>(null)
     var allFilms by mutableStateOf<List<Film>>(emptyList())
     var surround by mutableStateOf(store.surround)
+    var thumbPoster by mutableStateOf(store.thumbPoster.also { Thumbs.enabled = it })
     var eq by mutableStateOf(store.eq)
     var adults by mutableStateOf(store.adults && store.pinHash.isNotEmpty())
     /** Daftar yang tampil: film 21+ disembunyikan bila Adults mati. */
@@ -321,6 +325,7 @@ class AppState(ctx: Context) {
     val hasCrop: Boolean get() = crop.any { it > 0.001f }
     fun useCrop(b: Boolean) { cropOn = b; store.cropOn = b }
     fun updateSurround(b: Boolean) { surround = b; store.surround = b }
+    fun updateThumbPoster(b: Boolean) { thumbPoster = b; store.thumbPoster = b; Thumbs.enabled = b }
     fun updateEq(l: List<Float>) { eq = l; store.eq = l }
     fun saveCrop(c: List<Float>) { crop = c; store.crop = c; useCrop(c.any { it > 0.001f }) }
     fun clearCrop() { crop = listOf(0f, 0f, 0f, 0f); store.crop = crop; useCrop(false) }

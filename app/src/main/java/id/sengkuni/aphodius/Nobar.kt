@@ -367,6 +367,14 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
     // ---------- suara ----------
     fun enableVoice() {
         if (voice != null) return
+        val sp = ctx.getSharedPreferences("nobar_fb", Context.MODE_PRIVATE)
+        val prev = sp.getString("vstage", "") ?: ""
+        if (prev.isNotEmpty() && prev != "done") {
+            // percobaan sebelumnya menutup aplikasi: tampilkan tahap terakhir, lewati sekali
+            sp.edit().putString("vstage", "").commit()
+            voiceError = "Suara sebelumnya berhenti di tahap \"$prev\". Kirim tahap ini ke developer, lalu coba lagi."
+            return
+        }
         voiceError = ""
         voiceOn = true; micOn = true
         try {
@@ -430,9 +438,13 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
         PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
     )
 
+    private val crumb = ctx.getSharedPreferences("nobar_fb", Context.MODE_PRIVATE)
+    private fun stage(x: String) { crumb.edit().putString("vstage", x).commit() }
+
     fun start(current: List<NbMember>) {
         post {
             runCatching {
+                stage("init")
                 if (!inited) {
                     PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(ctx).createInitializationOptions())
                     inited = true
@@ -452,8 +464,11 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
                     mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
                     mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
                 }
+                stage("source")
                 source = f.createAudioSource(mc)
+                stage("track")
                 track = f.createAudioTrack("mic", source).also { it.setEnabled(room.micOn) }
+                stage("audiomode")
                 prevMode = am.mode; prevSpeaker = am.isSpeakerphoneOn
                 am.mode = AudioManager.MODE_IN_COMMUNICATION
                 am.isSpeakerphoneOn = !hasHeadset()
