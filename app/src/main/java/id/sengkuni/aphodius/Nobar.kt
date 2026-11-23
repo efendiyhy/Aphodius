@@ -527,6 +527,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
                         if (pc != null && remoteSet.contains(from)) pc.addIceCandidate(cand)
                         else pending.getOrPut(from) { ArrayList() }.add(cand)
                     }
+                    else -> {}
                 }
             }
         }
