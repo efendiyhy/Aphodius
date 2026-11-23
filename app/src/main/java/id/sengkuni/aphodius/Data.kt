@@ -164,6 +164,15 @@ class Store(ctx: Context) {
     var pinHash: String
         get() = sp.getString("pinHash", "") ?: ""
         set(v) { sp.edit().putString("pinHash", v).apply() }
+    var skipSec: Int
+        get() = sp.getInt("skipSec", 10)
+        set(v) { sp.edit().putInt("skipSec", v).apply() }
+    var mobileQuality: Int
+        get() = sp.getInt("mobileQuality", 480)
+        set(v) { sp.edit().putInt("mobileQuality", v).apply() }
+    var hintSeen: Boolean
+        get() = sp.getBoolean("hintSeen", false)
+        set(v) { sp.edit().putBoolean("hintSeen", v).apply() }
     var floatChat: Boolean
         get() = sp.getBoolean("floatChat", true)
         set(v) { sp.edit().putBoolean("floatChat", v).apply() }
@@ -213,6 +222,9 @@ class AppState(ctx: Context) {
     var allFilms by mutableStateOf<List<Film>>(emptyList())
     var surround by mutableStateOf(store.surround)
     var floatChat by mutableStateOf(store.floatChat)
+    var skipSec by mutableStateOf(store.skipSec)
+    var mobileQuality by mutableStateOf(store.mobileQuality)
+    var hintSeen by mutableStateOf(store.hintSeen)
     var thumbPoster by mutableStateOf(store.thumbPoster.also { Thumbs.enabled = it })
     var eq by mutableStateOf(store.eq)
     var adults by mutableStateOf(store.adults && store.pinHash.isNotEmpty())
@@ -328,6 +340,24 @@ class AppState(ctx: Context) {
     fun setSpeedPref(s: Float) { speed = s; store.speed = s }
     val hasCrop: Boolean get() = crop.any { it > 0.001f }
     fun useCrop(b: Boolean) { cropOn = b; store.cropOn = b }
+    fun updateSkip(v: Int) { skipSec = v; store.skipSec = v }
+    fun updateMobileQuality(v: Int) { mobileQuality = v; store.mobileQuality = v }
+    fun markHintSeen() { hintSeen = true; store.hintSeen = true }
+
+    /** Film berikutnya: genre yang sama (utamakan yang belum ditonton), lalu Daftarku, lalu urutan daftar. */
+    fun nextFor(f: Film): Film? {
+        val pool = (if (f.isExtra) extraFilms else films).filter { !it.isSeries && it.id != f.id }
+        if (pool.isEmpty()) return null
+        fun done(x: Film) = (progress[x.id]?.frac ?: 0f) > 0.95f
+        val g = f.genres.map { it.trim().lowercase() }.toSet() - setOf("21+", "extraordinary")
+        val same = pool.map { it to it.genres.count { x -> x.trim().lowercase() in g } }.filter { it.second > 0 }
+            .sortedWith(compareBy<Pair<Film, Int>>({ done(it.first) }, { -it.second }))
+        if (same.isNotEmpty()) return same.first().first
+        pool.filter { it.id in favs }.sortedBy { done(it) }.firstOrNull()?.let { return it }
+        val idx = (if (f.isExtra) extraFilms else films).indexOfFirst { it.id == f.id }
+        val all = if (f.isExtra) extraFilms else films
+        return all.drop(idx + 1).firstOrNull { !it.isSeries } ?: pool.first()
+    }
     fun updateFloatChat(b: Boolean) { floatChat = b; store.floatChat = b }
     fun updateSurround(b: Boolean) { surround = b; store.surround = b }
     fun updateThumbPoster(b: Boolean) { thumbPoster = b; store.thumbPoster = b; Thumbs.enabled = b }

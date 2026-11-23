@@ -56,7 +56,7 @@ object Extractor {
         return sb.toString().replace("0", "").replace(".", "")
     }
 
-    suspend fun extract(link: String): Result<List<VideoVariant>> = withContext(Dispatchers.IO) {
+    suspend fun extract(link: String, onStage: (Int, Int) -> Unit = { _, _ -> }): Result<List<VideoVariant>> = withContext(Dispatchers.IO) {
         val id = tweetId(link) ?: return@withContext Result.failure(IllegalArgumentException("Link X tidak valid"))
         val sources = listOf(
             "https://api.fxtwitter.com/status/$id",
@@ -65,7 +65,8 @@ object Extractor {
         )
         var reached = false
         val merged = LinkedHashMap<String, VideoVariant>()
-        for (src in sources) {
+        for ((si, src) in sources.withIndex()) {
+            onStage(si + 1, sources.size)
             try {
                 val body = httpGet(src, 12000)
                 reached = true

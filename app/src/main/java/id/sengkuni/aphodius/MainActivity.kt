@@ -117,9 +117,7 @@ fun App(s: AppState) {
                         PlayerScreen(cur, next, s, onBack = { stack = stack.dropLast(1) }, onNext = { stack = stack.dropLast(1) + Route.Play(f.id, top.ep + 1) })
                     }
                 } else {
-                    val pool = if (f.isExtra) s.extraFilms else s.films
-                    val idx = pool.indexOfFirst { it.id == f.id }
-                    val next = if (pool.size > 1) pool[(idx + 1) % pool.size].takeIf { !it.isSeries } else null
+                    val next = s.nextFor(f)
                     key(f.id) {
                         PlayerScreen(f, next, s, onBack = { stack = stack.dropLast(1) }, onNext = { n -> stack = stack.dropLast(1) + Route.Play(n.id) }, room = s.nobar.room)
                     }

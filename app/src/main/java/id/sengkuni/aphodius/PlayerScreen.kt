@@ -132,6 +132,11 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     var controls by remember { mutableStateOf(true) }
     var panel by remember { mutableStateOf<String?>(null) }
     var chatOpen by remember { mutableStateOf(false) }
+    var rotLocked by remember { mutableStateOf(false) }
+    var sleepEnd by remember { mutableLongStateOf(0L) }
+    var stageText by remember { mutableStateOf("") }
+    var showHint by remember { mutableStateOf(!s.hintSeen) }
+    val skipMs = s.skipSec * 1000L
     var locked by remember { mutableStateOf(false) }
     var showUnlock by remember { mutableStateOf(false) }
     var unlockTick by remember { mutableIntStateOf(0) }
@@ -206,10 +211,15 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     // Ekstrak link X -> URL video langsung
     LaunchedEffect(film.id, attempt) {
         phase = 0
-        val r = Extractor.extract(film.link)
+        stageText = "Mencari sumber 1 dari 3…"
+        val r = Extractor.extract(film.link) { i, n -> stageText = "Mencari sumber $i dari $n…" }
         r.onSuccess { v ->
             variants = v
-            val pick = chooseVariant(v, s.quality)
+            val mobile = isMobileData(ctx)
+            val q = if (mobile && s.mobileQuality > 0 && s.quality == 0) s.mobileQuality else s.quality
+            val pick = chooseVariant(v, q)
+            stageText = "Memulai pemutaran…"
+            if (mobile && s.mobileQuality > 0 && s.quality == 0 && pick != null && !pick.hls) hud = "Data seluler: ${pick.height}p"
             curVar = pick
             val pr = s.progress[film.id]
             val seek = if (room == null && pr != null && pr.frac in 0.02f..0.95f) (pr.pos - 2000).coerceAtLeast(0) else 0L
@@ -233,6 +243,20 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         if (controls && isPlaying && panel == null && !dragging && phase == 1) { delay(3500); controls = false }
     }
     LaunchedEffect(hud) { if (hud != null) { delay(900); hud = null } }
+
+    // Timer tidur: jeda video saat waktunya habis
+    LaunchedEffect(sleepEnd) {
+        if (sleepEnd <= 0L) return@LaunchedEffect
+        while (System.currentTimeMillis() < sleepEnd) delay(1000)
+        player.pause()
+        if (room != null && room.canControl()) room.publish(false, player.currentPosition)
+        sleepEnd = 0L
+        hud = "Timer tidur: video dihentikan"
+    }
+    // Petunjuk gestur: tampil sekali, hilang sendiri
+    LaunchedEffect(showHint, phase) {
+        if (showHint && phase == 1) { delay(7000); showHint = false; s.markHintSeen() }
+    }
 
     // Nobar: lapor siap/buffering, dan host memulai bersamaan setelah semua siap
     if (room != null) {
@@ -345,8 +369,8 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                         onTap = { if (panel != null) panel = null else controls = !controls },
                         onDoubleTap = { o ->
                             if (phase == 1) when {
-                                o.x < size.width / 3f -> seekBy(-10_000)
-                                o.x > size.width * 2f / 3f -> seekBy(10_000)
+                                o.x < size.width / 3f -> seekBy(-skipMs)
+                                o.x > size.width * 2f / 3f -> seekBy(skipMs)
                                 else -> togglePlay()
                             }
                         },
@@ -392,11 +416,27 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
             )
         }
 
+        if (showHint && phase == 1 && !locked) {
+            Column(
+                Modifier.align(Alignment.Center).clip(RoundedCornerShape(18.dp)).background(Color.Black.copy(alpha = .72f))
+                    .clickable { showHint = false; s.markHintSeen() }.padding(horizontal = 24.dp, vertical = 16.dp),
+            ) {
+                Text("Gestur pemutar", color = C.Aqua, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Spacer(Modifier.height(6.dp))
+                Text("• Ketuk dua kali kiri / kanan: mundur / maju ${s.skipSec} detik", color = Color.White, fontSize = 13.sp)
+                Text("• Ketuk dua kali di tengah: jeda / putar", color = Color.White, fontSize = 13.sp)
+                Text("• Geser atas-bawah di kiri: kecerahan", color = Color.White, fontSize = 13.sp)
+                Text("• Geser atas-bawah di kanan: suara", color = Color.White, fontSize = 13.sp)
+                Text("Ketuk untuk menutup", color = C.Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+            }
+        }
+
         if (phase == 0) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator(color = C.Aqua, strokeWidth = 3.dp, modifier = Modifier.size(40.dp))
                 Spacer(Modifier.height(12.dp))
                 Text("Menyiapkan video…", color = Color.White)
+                if (stageText.isNotEmpty()) Text(stageText, color = C.Aqua, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
                 Text(film.name, color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
             }
             IconBtn(Ic.Back, "Kembali", onBack, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(16.dp), glass = true)
@@ -423,16 +463,22 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                         IconBtn(Ic.People, "Chat nobar", { chatOpen = !chatOpen }, glass = true)
                         Spacer(Modifier.width(8.dp))
                     }
+                    IconBtn(Ic.Rotate, if (rotLocked) "Buka kunci rotasi" else "Kunci rotasi", {
+                        rotLocked = !rotLocked
+                        activity?.requestedOrientation = if (rotLocked) ActivityInfo.SCREEN_ORIENTATION_LOCKED else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        hud = if (rotLocked) "Rotasi terkunci" else "Rotasi otomatis"
+                    }, glass = true, tint = if (rotLocked) C.Aqua else Color.White)
+                    Spacer(Modifier.width(8.dp))
                     IconBtn(Ic.Lock, "Kunci layar", { locked = true; controls = false; panel = null; hud = "Layar terkunci"; unlockTick++ }, glass = true)
                     Spacer(Modifier.width(8.dp))
                     IconBtn(Ic.Aspect, "Rasio layar", { resize = (resize + 1) % resizeModes.size; hud = resizeModes[resize].second }, glass = true)
                 }
                 Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(36.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SeekIcon(Ic.Rewind) { seekBy(-10_000) }
+                    SeekIcon(Ic.Rewind, s.skipSec.toString()) { seekBy(-skipMs) }
                     Box(Modifier.size(72.dp).clip(CircleShape).background(C.Aqua).clickable { togglePlay() }, contentAlignment = Alignment.Center) {
                         Icon(if (isPlaying) Ic.PauseFill else Ic.PlayFill, if (isPlaying) "Jeda" else "Putar", tint = C.OnAqua, modifier = Modifier.size(32.dp))
                     }
-                    SeekIcon(Ic.Forward) { seekBy(10_000) }
+                    SeekIcon(Ic.Forward, s.skipSec.toString()) { seekBy(skipMs) }
                 }
                 Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 10.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -450,14 +496,16 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                         colors = SliderDefaults.colors(thumbColor = C.Aqua, activeTrackColor = C.Aqua, inactiveTrackColor = Color.White.copy(alpha = .28f)),
                         modifier = Modifier.fillMaxWidth().height(28.dp),
                     )
-                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         BarButton(if (muted) Ic.Mute else Ic.Volume, "Suara") { panel = "volume" }
                         BarButton(Ic.Quality, "Kualitas · " + (if (s.quality == 0) "Otomatis" else "${s.quality}p")) { panel = "quality" }
                         BarButton(Ic.Speed, "Kecepatan · ${fmtSpeed(s.speed)}") { panel = "speed" }
+                        BarButton(Ic.Skip, "Lompat · ${s.skipSec} dtk") { panel = "skip" }
+                        BarButton(Ic.Moon, "Timer tidur" + if (sleepEnd > 0) " · ${((sleepEnd - System.currentTimeMillis()) / 60000 + 1)} mnt" else "") { panel = "sleep" }
                         BarButton(Ic.Crop, "Crop · " + (if (s.cropOn && s.hasCrop) "Aktif" else "Mati")) { panel = "crop" }
                         if (room != null) BarButton(Ic.Star, "Reaksi") { panel = "react" }
                         if (room != null) BarButton(if (room.voiceOn && room.micOn) Ic.Mic else Ic.MicOff, if (!room.voiceOn) "Suara" else if (room.micOn) "Mik aktif" else "Mik mati") { micAct?.invoke() }
-                        else if (next != null) BarButton(Ic.Next, "Berikutnya") { onNext(next) }
+                        else if (next != null) BarButton(Ic.Next, "Berikutnya") { panel = "next" }
                     }
                 }
             }
@@ -471,6 +519,26 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                     .verticalScroll(rememberScrollState()),
             ) {
                 when (panel) {
+                    "next" -> if (next != null) {
+                        PanelTitle("Berikutnya")
+                        Text(next.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 18.dp))
+                        Text(meta(next), color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
+                        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            AButton("BATAL", null, false, Modifier.weight(1f)) { panel = null }
+                            AButton("PUTAR", Ic.PlayFill, true, Modifier.weight(1f)) { panel = null; onNext(next) }
+                        }
+                    }
+                    "skip" -> {
+                        PanelTitle("Durasi lompat")
+                        listOf(5, 10, 30).forEach { v -> PanelItem("$v detik", s.skipSec == v) { s.updateSkip(v); panel = null } }
+                    }
+                    "sleep" -> {
+                        PanelTitle("Timer tidur")
+                        PanelItem("Mati", sleepEnd == 0L) { sleepEnd = 0L; panel = null }
+                        listOf(15, 30, 45, 60, 90).forEach { mnt ->
+                            PanelItem("$mnt menit", false) { sleepEnd = System.currentTimeMillis() + mnt * 60_000L; panel = null; hud = "Video berhenti dalam $mnt menit" }
+                        }
+                    }
                     "react" -> if (room != null) {
                         PanelTitle("Reaksi")
                         Box(Modifier.padding(horizontal = 12.dp)) { ReactionBar(room) }
@@ -559,10 +627,10 @@ private fun applyQuality(list: List<VideoVariant>, q: Int, cur: VideoVariant?, p
 private fun fmtSpeed(v: Float): String = (if (v % 1f == 0f) v.toInt().toString() else v.toString()) + "x"
 
 @Composable
-private fun SeekIcon(icon: ImageVector, onClick: () -> Unit) {
+private fun SeekIcon(icon: ImageVector, label: String, onClick: () -> Unit) {
     Box(Modifier.size(52.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(44.dp))
-        Text("10", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -704,3 +772,10 @@ private suspend fun detectCrop(pv: PlayerView): List<Float>? {
     ).map { if (it < 0.004f) 0f else (it + 0.003f).coerceIn(0f, 0.45f) }
     return out
 }
+
+
+private fun isMobileData(ctx: Context): Boolean = runCatching {
+    val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+    val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+    caps != null && caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) && !caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+}.getOrDefault(false)

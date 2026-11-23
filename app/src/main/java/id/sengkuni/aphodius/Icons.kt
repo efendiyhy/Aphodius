@@ -50,6 +50,9 @@ object Ic {
     val People by lazy { stroke("people", "M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20c0-3 3-5 6-5s6 2 6 5M14 15c4 0 8 1 8 5") }
     val Copy by lazy { stroke("copy", "M9 9h11v11H9zM5 15V4h11") }
     val Send by lazy { stroke("send", "M3 11l18-8-8 18-2-8z") }
+    val Rotate by lazy { stroke("rotate", "M4 12a8 8 0 0 1 14-5l2-2v6h-6l2.5-2.5A5 5 0 0 0 7 12M20 12a8 8 0 0 1-14 5l-2 2v-6h6l-2.5 2.5A5 5 0 0 0 17 12") }
+    val Moon by lazy { stroke("moon", "M20 14A8 8 0 1 1 10 4a6.5 6.5 0 0 0 10 10z") }
+    val Skip by lazy { stroke("skip", "M12 5v14M5 12h14") }
     val Star by lazy { stroke("star", "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z") }
     val Bookmark by lazy { stroke("bookmark", "M6 3h12v18l-6-4-6 4z") }
     val Speed by lazy { stroke("speed", "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2") }

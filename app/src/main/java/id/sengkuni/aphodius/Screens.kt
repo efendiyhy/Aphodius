@@ -796,6 +796,10 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
         }
         if (s.hasCrop) Text("Hapus crop tersimpan", color = C.Aqua, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).clickable { s.clearCrop() })
 
+        SettingRow("Kualitas di data seluler", if (s.mobileQuality == 0) "Mati — ikut pengaturan Kualitas di pemutar" else "${s.mobileQuality}p saat memakai data seluler (WiFi tetap Otomatis)", s.mobileQuality > 0) {
+            val opts = listOf(0, 360, 480, 720)
+            s.updateMobileQuality(opts[(opts.indexOf(s.mobileQuality) + 1) % opts.size])
+        }
         SettingRow("Poster dari video", if (s.thumbPoster) "Aktif — film tanpa poster memakai thumbnail videonya" else "Mati — film tanpa poster memakai gambar pola", s.thumbPoster) { s.updateThumbPoster(!s.thumbPoster) }
 
         SettingHeader("Pembaruan")
