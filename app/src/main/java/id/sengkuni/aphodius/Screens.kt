@@ -345,6 +345,7 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
     val scope = rememberCoroutineScope()
     var picked by remember { mutableStateOf<String?>(null) }
     val land = LocalConfiguration.current.screenWidthDp > 600
+    val homeCols = gridCols()
     val used = remember(s.films) { s.films.flatMap { it.genres }.distinct().sorted() }
     val genre = picked?.takeIf { it in used }
 
@@ -388,7 +389,7 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
         if (s.films.isEmpty()) {
             item { EmptyState(s, if (s.loaded) "Belum ada film.\nTambahkan lewat web Master Stream, lalu tekan Sinkron." else "Memuat data…") }
         } else if (genre != null) {
-            val cols = gridCols()
+            val cols = homeCols
             items(s.films.filter { genre in it.genres }.chunked(cols)) { rowFilms ->
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     rowFilms.forEach { f -> PosterCard(f, Modifier.weight(1f)) { onOpen(f) } }
