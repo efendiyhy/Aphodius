@@ -601,7 +601,7 @@ class Nobar(ctx: Context) {
                     .put("members", JSONObject().put(me, JSONObject().put("name", nick().ifBlank { "Host" }).put("seen", SV).put("voice", false).put("mic", false)))
                 val r = fb.req("PUT", "rooms/$code", body.toString(), mapOf("If-Match" to "null_etag"))
                 if (r.first == 200) { made = code; break }
-                if (r.first == 401 || r.first == 403) { error = "Server nobar menolak (periksa aturan database)"; return }
+                if (r.first != 412) { error = "Server nobar menolak (kode ${r.first}): ${r.second.take(160)}"; return }
             }
             if (made == null) { if (error.isEmpty()) error = "Gagal membuat ruangan, coba lagi"; return }
             runCatching { fb.req("PUT", "roomIdx/$made", System.currentTimeMillis().toString()) }
