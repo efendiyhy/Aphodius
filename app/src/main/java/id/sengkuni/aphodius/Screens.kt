@@ -235,13 +235,19 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Wordmark(13.dp)
-                    if (s.nickname.isNotBlank()) Text("Halo, ${s.nickname}", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
                 }
                 IconBtn(Ic.Refresh, "Muat ulang", { scope.launch { s.refresh() } }, tint = if (s.refreshing) C.Aqua else Color.White)
                 Spacer(Modifier.width(8.dp))
                 IconBtn(Ic.Search, "Cari", onSearch)
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.clickable { onProfile() }) { Avatar(s.nickname, 40) }
+            }
+        }
+        if (s.nickname.isNotBlank()) item {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp)) {
+                Text("Halo,", color = Color(0xFFB4C7D9), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Text(s.nickname, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black, lineHeight = 34.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Mau nonton apa hari ini?", color = C.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
             }
         }
         if (used.isNotEmpty()) item {
@@ -325,7 +331,7 @@ fun SearchScreen(s: AppState, onBack: () -> Unit, onOpen: (Film) -> Unit, onPlay
             Spacer(Modifier.width(10.dp))
             Box(Modifier.weight(1f)) {
                 if (q.isEmpty()) Text("Cari film, tahun, genre", color = C.Subtle, fontSize = 15.sp)
-                BasicTextField(q, { q = it }, singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth())
+                BasicTextField(q, { q = it }, singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontFamily = AFont, color = Color.White, fontSize = 15.sp), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth())
             }
             if (q.isNotEmpty()) Icon(Ic.Close, "Hapus", tint = C.Muted, modifier = Modifier.size(20.dp).clickable { q = "" })
         }
@@ -470,7 +476,6 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ActionTile(if (fav) Ic.Check else Ic.Plus, if (fav) "Di Daftarku" else "Daftarku", Modifier.weight(1f)) { s.toggleFav(f.id) }
                 ActionTile(Ic.Share, "Bagikan", Modifier.weight(1f)) { shareFilm(ctx, f) }
-                ActionTile(Ic.External, "Buka di X", Modifier.weight(1f)) { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(f.link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }
             Spacer(Modifier.height(28.dp))
         }
@@ -514,7 +519,7 @@ fun OnboardingScreen(onDone: (String) -> Unit) {
             Text("Siapa nama sapaanmu?", color = C.Muted, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp, bottom = 22.dp))
             Box(Modifier.fillMaxWidth().clip(fieldShape).background(C.Surface).border(1.dp, C.Outline, fieldShape).padding(horizontal = 16.dp, vertical = 15.dp)) {
                 if (name.isEmpty()) Text("Nama sapaan", color = C.Subtle)
-                BasicTextField(name, { if (it.length <= 24) name = it }, singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth())
+                BasicTextField(name, { if (it.length <= 24) name = it }, singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontFamily = AFont, color = Color.White, fontSize = 16.sp), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth())
             }
             Spacer(Modifier.height(16.dp))
             val ok = name.isNotBlank()
@@ -584,7 +589,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
                     BasicTextField(
                         pw, { pw = it; pwErr = "" }, singleLine = true,
                         visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth(),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = AFont, color = Color.White, fontSize = 16.sp), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 Text(pwErr, color = Color(0xFFFF6B6B), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp).height(20.dp))
@@ -626,11 +631,20 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
             Text("Profil", fontSize = 24.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 14.dp))
         }
         Column(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Avatar(s.nickname, 84)
+            val pickCtx = LocalContext.current
+            val pickScope = rememberCoroutineScope()
+            val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contracts.ActivityResultContracts.GetContent()) { uri ->
+                if (uri != null) pickScope.launch(kotlinx.coroutines.Dispatchers.IO) { AvatarStore.save(pickCtx, uri) }
+            }
+            Box(Modifier.clickable { picker.launch("image/*") }) { Avatar(s.nickname, 96) }
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(if (AvatarStore.version >= 0 && AvatarStore.has(pickCtx)) "Ganti foto" else "Tambah foto", color = C.Aqua, fontSize = 13.sp, modifier = Modifier.clickable { picker.launch("image/*") })
+                if (AvatarStore.version >= 0 && AvatarStore.has(pickCtx)) Text("Hapus foto", color = C.Muted, fontSize = 13.sp, modifier = Modifier.clickable { AvatarStore.clear(pickCtx) })
+            }
             Spacer(Modifier.height(10.dp))
             if (editName) {
                 Box(Modifier.width(240.dp).clip(RoundedCornerShape(14.dp)).background(C.Surface).border(1.dp, C.Outline, RoundedCornerShape(14.dp)).padding(horizontal = 14.dp, vertical = 12.dp)) {
-                    BasicTextField(name, { if (it.length <= 24) name = it }, singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp, textAlign = TextAlign.Center), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth())
+                    BasicTextField(name, { if (it.length <= 24) name = it }, singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontFamily = AFont, color = Color.White, fontSize = 16.sp, textAlign = TextAlign.Center), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth())
                 }
                 Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     AButton("Simpan", null, true) { if (name.isNotBlank()) { s.saveNickname(name); editName = false } }
@@ -654,6 +668,25 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
         if (info.isNotEmpty()) Text(info, color = Color(0xFFFFB454), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         if (s.lockEnabled && biometricAvailable(ctx)) {
             SettingRow("Buka dengan sidik jari", "Alternatif selain PIN", s.biometric) { s.setBiometricPref(!s.biometric) }
+        }
+
+        SettingHeader("Suara")
+        SettingRow("Surround bioskop", "Efek suara ruang ala bioskop (butuh headphone/speaker yang mendukung)", s.surround) { s.updateSurround(!s.surround) }
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text("Equalizer", fontSize = 15.sp)
+            Row(Modifier.padding(vertical = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                EQ_PRESETS.forEach { (n, lv) -> Chip(n, s.eq == lv) { s.updateEq(lv) } }
+            }
+            EQ_LABELS.forEachIndexed { i, lb ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(lb, color = C.Muted, fontSize = 11.sp, modifier = Modifier.width(56.dp))
+                    androidx.compose.material3.Slider(
+                        value = s.eq[i], onValueChange = { v -> s.updateEq(s.eq.toMutableList().also { it[i] = v }) }, valueRange = -1f..1f,
+                        colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = C.Aqua, activeTrackColor = C.Aqua, inactiveTrackColor = C.Outline),
+                        modifier = Modifier.weight(1f).height(28.dp),
+                    )
+                }
+            }
         }
 
         SettingHeader("Pemutar")

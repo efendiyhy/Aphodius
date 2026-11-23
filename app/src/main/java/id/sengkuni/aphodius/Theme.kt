@@ -37,11 +37,21 @@ object C {
     val SurfaceHigh = Color(0xFF15283B) // input, chip, tombol tonal
     val Outline = Color(0xFF223850)     // garis tipis
     val Muted = Color(0xFF8FA8BF)       // teks sekunder
-    val Subtle = Color(0xFF5C7790)      // teks tersier
+    val Subtle = Color(0xFF7692AC)      // teks tersier
     val OnAqua = Color(0xFF031019)      // teks/ikon di atas Aqua
     val Gold = Color(0xFFF2A33A)        // aksen scarab: lencana & sorotan
     val Brand = Brush.horizontalGradient(listOf(Ocean, Aqua))
 }
+
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+val AFont = androidx.compose.ui.text.font.FontFamily(
+    listOf(400, 500, 600, 700, 800, 900).map { w ->
+        androidx.compose.ui.text.font.Font(
+            R.font.montserrat, androidx.compose.ui.text.font.FontWeight(w),
+            variationSettings = androidx.compose.ui.text.font.FontVariation.Settings(androidx.compose.ui.text.font.FontVariation.weight(w)),
+        )
+    }
+)
 
 @Composable
 fun AphodiusTheme(content: @Composable () -> Unit) {
@@ -51,7 +61,7 @@ fun AphodiusTheme(content: @Composable () -> Unit) {
             surfaceVariant = C.SurfaceHigh, outline = C.Outline,
             onPrimary = C.OnAqua, onBackground = Color.White, onSurface = Color.White,
         ),
-        content = content,
+        content = { androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(fontFamily = AFont), content) },
     )
 }
 

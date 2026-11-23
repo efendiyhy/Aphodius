@@ -46,14 +46,6 @@ fun promptBiometric(ctx: Context, onOk: () -> Unit) {
     prompt.authenticate(info)
 }
 
-@Composable
-fun Avatar(name: String, size: Int = 40) {
-    val ch = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "A"
-    Box(Modifier.size(size.dp).clip(CircleShape).background(C.Brand), contentAlignment = Alignment.Center) {
-        Text(ch, color = Color.White, fontWeight = FontWeight.Black, fontSize = (size * 0.42f).sp)
-    }
-}
-
 /** Papan angka PIN. onComplete dipanggil saat PIN_LEN digit terisi. Ubah resetTick untuk mengosongkan isian (mis. setelah PIN salah). */
 @Composable
 fun PinPad(title: String, subtitle: String, error: String, resetTick: Int = 0, extraKey: (@Composable () -> Unit)? = null, onComplete: (String) -> Unit) {
@@ -109,7 +101,8 @@ fun LockScreen(s: AppState, onUnlock: () -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
             Avatar(s.nickname, 64)
             Spacer(Modifier.height(12.dp))
-            Text("Halo, ${s.nickname}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Halo,", fontSize = 15.sp, color = C.Muted)
+            Text(s.nickname, fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color.White)
             Spacer(Modifier.height(18.dp))
             PinPad(
                 title = "Masukkan PIN", subtitle = "Aphodius dikunci", error = err, resetTick = tick,

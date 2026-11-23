@@ -136,6 +136,12 @@ class Store(ctx: Context) {
     var pinHash: String
         get() = sp.getString("pinHash", "") ?: ""
         set(v) { sp.edit().putString("pinHash", v).apply() }
+    var surround: Boolean
+        get() = sp.getBoolean("surround", false)
+        set(v) { sp.edit().putBoolean("surround", v).apply() }
+    var eq: List<Float>
+        get() = (sp.getString("eq", "0,0,0,0,0") ?: "").split(",").mapNotNull { it.toFloatOrNull() }.let { if (it.size == 5) it else EQ_FLAT }
+        set(v) { sp.edit().putString("eq", v.joinToString(",")).apply() }
     var adults: Boolean
         get() = sp.getBoolean("adults", false)
         set(v) { sp.edit().putBoolean("adults", v).apply() }
@@ -166,6 +172,8 @@ class Store(ctx: Context) {
 class AppState(ctx: Context) {
     val store = Store(ctx)
     var allFilms by mutableStateOf<List<Film>>(emptyList())
+    var surround by mutableStateOf(store.surround)
+    var eq by mutableStateOf(store.eq)
     var adults by mutableStateOf(store.adults && store.pinHash.isNotEmpty())
     /** Daftar yang tampil: film 21+ disembunyikan bila Adults mati. */
     val films: List<Film> get() = if (adults) allFilms else allFilms.filter { !it.isAdult }
@@ -258,6 +266,8 @@ class AppState(ctx: Context) {
     fun setSpeedPref(s: Float) { speed = s; store.speed = s }
     val hasCrop: Boolean get() = crop.any { it > 0.001f }
     fun useCrop(b: Boolean) { cropOn = b; store.cropOn = b }
+    fun updateSurround(b: Boolean) { surround = b; store.surround = b }
+    fun updateEq(l: List<Float>) { eq = l; store.eq = l }
     fun saveCrop(c: List<Float>) { crop = c; store.crop = c; useCrop(c.any { it > 0.001f }) }
     fun clearCrop() { crop = listOf(0f, 0f, 0f, 0f); store.crop = crop; useCrop(false) }
     fun saveNickname(n: String) { nickname = n.trim(); store.nickname = nickname }

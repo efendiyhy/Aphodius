@@ -36,3 +36,10 @@ Rilis baru: naikkan angka di `version.txt` lalu push ke `main` — CI membuat ta
 
 ## v1.3.1
 - Sinkron data jauh lebih cepat: membaca lewat GitHub API (bukan raw yang ter-cache 5 menit), cek tiap 30 detik, dan langsung cek saat aplikasi dibuka kembali.
+
+## v1.4.0
+- Tombol "Buka di X" dihapus dari semua film.
+- Pengaturan Suara: Surround bioskop + equalizer 5 pita dengan preset.
+- Crop otomatis: tombol AUTO di editor crop mendeteksi bingkai hitam di tepi video.
+- Foto profil (ambil dari galeri).
+- Font Montserrat (gaya Netflix); sapaan di Beranda lebih besar dan kontras.

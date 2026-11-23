@@ -59,6 +59,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import kotlinx.coroutines.launch
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -107,6 +108,16 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     }
 
     val player = remember { ExoPlayer.Builder(ctx).build() }
+    val fx = remember { AudioFx() }
+    var pvRef by remember { mutableStateOf<PlayerView?>(null) }
+    var cropMsg by remember { mutableStateOf<String?>(null) }
+    DisposableEffect(player) {
+        fx.attach(player.audioSessionId)
+        val al = object : Player.Listener { override fun onAudioSessionIdChanged(audioSessionId: Int) { fx.attach(audioSessionId) } }
+        player.addListener(al)
+        onDispose { player.removeListener(al); fx.release() }
+    }
+    LaunchedEffect(s.surround, s.eq) { fx.apply(s.surround, s.eq) }
     var phase by remember { mutableIntStateOf(0) } // 0 memuat, 1 siap, 2 galat
     var error by remember { mutableStateOf("") }
     var attempt by remember { mutableIntStateOf(0) }
@@ -232,6 +243,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                     (android.view.LayoutInflater.from(c).inflate(R.layout.player_view, null) as PlayerView).apply {
                         useController = false
                         this.player = player
+                        pvRef = this
                         keepScreenOn = true
                         setShutterBackgroundColor(android.graphics.Color.BLACK)
                     }
@@ -325,7 +337,6 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     AButton("COBA LAGI", Ic.Refresh, true) { attempt++ }
-                    AButton("BUKA DI X", Ic.External, false) { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(film.link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                     AButton("KEMBALI", null, false) { onBack() }
                 }
             }
@@ -419,6 +430,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
 
         if (editing) CropEditor(
             initial = if (s.hasCrop) s.crop else listOf(0f, 0f, 0f, 0f),
+            onAuto = { pvRef?.let { detectCrop(it) } },
             onSave = { s.saveCrop(it); editing = false },
             onCancel = { editing = false },
         )
@@ -462,11 +474,14 @@ private fun PanelItem(text: String, selected: Boolean, onClick: () -> Unit) {
 
 /** Atur garis crop dengan menggeser garis di layar (kiri, atas, kanan, bawah). Hasil disimpan global. */
 @Composable
-private fun CropEditor(initial: List<Float>, onSave: (List<Float>) -> Unit, onCancel: () -> Unit) {
+private fun CropEditor(initial: List<Float>, onAuto: suspend () -> List<Float>?, onSave: (List<Float>) -> Unit, onCancel: () -> Unit) {
     var ins by remember { mutableStateOf(initial) } // kiri, atas, kanan, bawah
     var box by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(1, 1)) }
     var edge by remember { mutableIntStateOf(-1) }
     val aqua = C.Aqua
+    val scope = rememberCoroutineScope()
+    var autoMsg by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().onSizeChanged { box = it }) {
         Canvas(
             Modifier.fillMaxSize().pointerInput(Unit) {
@@ -511,12 +526,67 @@ private fun CropEditor(initial: List<Float>, onSave: (List<Float>) -> Unit, onCa
             drawCircle(aqua, hr, Offset(w / 2, t)); drawCircle(aqua, hr, Offset(w / 2, b))
         }
         Column(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 12.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = .7f)).padding(horizontal = 16.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Geser garis untuk mengatur area video", color = Color.White, fontSize = 13.sp)
+            Text(if (autoMsg.isNotEmpty()) autoMsg else "Geser garis untuk mengatur area video", color = Color.White, fontSize = 13.sp)
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AButton("SIMPAN", Ic.Check, true) { onSave(ins) }
+                AButton(if (busy) "…" else "AUTO", null, false) {
+                    if (!busy) scope.launch {
+                        busy = true; autoMsg = "Mendeteksi bingkai hitam…"
+                        val r = onAuto()
+                        if (r == null) autoMsg = "Gagal membaca frame video"
+                        else if (r.all { it < 0.003f }) { ins = listOf(0f, 0f, 0f, 0f); autoMsg = "Tidak ada bingkai hitam" }
+                        else { ins = r; autoMsg = "Selesai — geser untuk menyesuaikan" }
+                        busy = false
+                    }
+                }
                 AButton("RESET", null, false) { ins = listOf(0f, 0f, 0f, 0f) }
                 AButton("BATAL", null, false) { onCancel() }
             }
         }
     }
+}
+
+/** Deteksi tepi hitam: pindai beberapa frame, ambil crop terkecil (aman untuk adegan gelap). Hasil = inset kiri, atas, kanan, bawah (pecahan layar). */
+private suspend fun detectCrop(pv: PlayerView): List<Float>? {
+    val tv = pv.videoSurfaceView as? android.view.TextureView ?: return null
+    if (tv.width < 2 || tv.height < 2 || pv.width < 2 || pv.height < 2) return null
+    val a = IntArray(2); val b = IntArray(2)
+    tv.getLocationInWindow(a); pv.getLocationInWindow(b)
+    val x0 = (a[0] - b[0]).toFloat(); val y0 = (a[1] - b[1]).toFloat()
+    val tw = tv.width.toFloat(); val th = tv.height.toFloat()
+    val bw = 200; val bh = (bw * th / tw).toInt().coerceIn(40, 600)
+    var best: FloatArray? = null
+    repeat(4) {
+        val bmp = tv.getBitmap(bw, bh)
+        if (bmp != null) {
+            val px = IntArray(bw * bh)
+            bmp.getPixels(px, 0, bw, 0, 0, bw, bh)
+            bmp.recycle()
+            fun lit(x: Int, y: Int): Boolean {
+                val c = px[y * bw + x]
+                return maxOf((c shr 16) and 255, (c shr 8) and 255, c and 255) > 30
+            }
+            fun rowLit(y: Int) = (0 until bw).count { lit(it, y) } > bw * 0.015
+            fun colLit(x: Int) = (0 until bh).count { lit(x, it) } > bh * 0.015
+            val total = px.count { c -> maxOf((c shr 16) and 255, (c shr 8) and 255, c and 255) > 30 }
+            if (total > px.size * 0.02) {
+                var t = 0; while (t < bh - 1 && !rowLit(t)) t++
+                var bt = 0; while (bt < bh - 1 - t && !rowLit(bh - 1 - bt)) bt++
+                var l = 0; while (l < bw - 1 && !colLit(l)) l++
+                var r = 0; while (r < bw - 1 - l && !colLit(bw - 1 - r)) r++
+                val cur = floatArrayOf(l.toFloat() / bw, t.toFloat() / bh, r.toFloat() / bw, bt.toFloat() / bh)
+                best = best?.let { o -> FloatArray(4) { minOf(o[it], cur[it]) } } ?: cur
+            }
+        }
+        kotlinx.coroutines.delay(300)
+    }
+    val m = best ?: return null
+    val pw = pv.width.toFloat(); val ph = pv.height.toFloat()
+    val out = listOf(
+        (x0 + m[0] * tw) / pw,
+        (y0 + m[1] * th) / ph,
+        ((pw - (x0 + tw)) + m[2] * tw) / pw,
+        ((ph - (y0 + th)) + m[3] * th) / ph,
+    ).map { if (it < 0.004f) 0f else (it + 0.003f).coerceIn(0f, 0.45f) }
+    return out
 }
