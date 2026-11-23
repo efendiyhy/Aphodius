@@ -41,7 +41,8 @@ object AvatarStore {
         return bmp
     }
 
-    fun save(ctx: Context, uri: Uri): Boolean = try {
+    fun save(ctx: Context, uri: Uri): Boolean {
+        return try {
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
         var sample = 1
@@ -55,8 +56,9 @@ object AvatarStore {
         file(ctx).outputStream().use { out.compress(Bitmap.CompressFormat.JPEG, 90, it) }
         version++
         true
-    } catch (e: Exception) {
-        false
+        } catch (e: Exception) {
+            false
+        }
     }
 
     fun clear(ctx: Context) { file(ctx).delete(); version++ }

@@ -633,7 +633,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
         Column(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             val pickCtx = LocalContext.current
             val pickScope = rememberCoroutineScope()
-            val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contracts.ActivityResultContracts.GetContent()) { uri ->
+            val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
                 if (uri != null) pickScope.launch(kotlinx.coroutines.Dispatchers.IO) { AvatarStore.save(pickCtx, uri) }
             }
             Box(Modifier.clickable { picker.launch("image/*") }) { Avatar(s.nickname, 96) }
