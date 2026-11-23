@@ -69,9 +69,20 @@ class Fb(ctx: Context) {
     @Volatile private var dbUrl: String = sp.getString("db", "") ?: ""
 
     private fun call(method: String, url: String, body: String?, headers: Map<String, String> = emptyMap(), timeout: Int = 15000): Pair<Int, String> {
+        var last: java.io.IOException? = null
+        for (i in 0 until 3) {
+            try { return callOnce(method, url, body, headers, timeout) }
+            catch (e: java.io.IOException) { last = e; Thread.sleep(400L * (i + 1)) }
+        }
+        val host = runCatching { URL(url).host }.getOrDefault("server")
+        throw java.io.IOException("Koneksi ke $host gagal: ${last?.message}")
+    }
+
+    private fun callOnce(method: String, url: String, body: String?, headers: Map<String, String>, timeout: Int): Pair<Int, String> {
         val c = URL(url).openConnection() as HttpURLConnection
         try {
             c.requestMethod = method
+            c.setRequestProperty("Connection", "close")
             c.connectTimeout = timeout; c.readTimeout = timeout
             headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
             if (body != null) {
