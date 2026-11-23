@@ -565,8 +565,42 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
     var firstPin by remember { mutableStateOf("") }
     var err by remember { mutableStateOf("") }
     var tick by remember { mutableIntStateOf(0) }
+    var askPw by remember { mutableStateOf(false) }
+    var pw by remember { mutableStateOf("") }
+    var pwErr by remember { mutableStateOf("") }
+    var wantAdults by remember { mutableStateOf(false) } // aktifkan Adults setelah PIN dibuat
+    var info by remember { mutableStateOf("") }
 
-    BackHandler { if (pinMode != null) pinMode = null else onBack() }
+    BackHandler { if (askPw) { askPw = false; pw = ""; pwErr = "" } else if (pinMode != null) { pinMode = null; wantAdults = false } else onBack() }
+
+    if (askPw) {
+        Box(Modifier.fillMaxSize().background(C.Navy).statusBarsPadding().navigationBarsPadding().imePadding(), contentAlignment = Alignment.Center) {
+            Column(Modifier.padding(28.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Aktifkan Adults", fontSize = 22.sp, fontWeight = FontWeight.Black)
+                Text("Masukkan password untuk menampilkan film 21+", color = C.Muted, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
+                val shape = RoundedCornerShape(16.dp)
+                Box(Modifier.fillMaxWidth().clip(shape).background(C.Surface).border(1.dp, C.Outline, shape).padding(horizontal = 16.dp, vertical = 15.dp)) {
+                    if (pw.isEmpty()) Text("Password", color = C.Subtle)
+                    BasicTextField(
+                        pw, { pw = it; pwErr = "" }, singleLine = true,
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp), cursorBrush = SolidColor(C.Aqua), modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Text(pwErr, color = Color(0xFFFF6B6B), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp).height(20.dp))
+                Spacer(Modifier.height(8.dp))
+                AButton("AKTIFKAN", null, true, Modifier.fillMaxWidth()) {
+                    if (!s.checkAdultsPassword(pw)) { pwErr = "Password salah" } else {
+                        askPw = false; pw = ""; pwErr = ""
+                        if (s.lockEnabled) s.setAdults(true) else { wantAdults = true; err = ""; pinMode = "set1" }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                AButton("BATAL", null, false, Modifier.fillMaxWidth()) { askPw = false; pw = ""; pwErr = "" }
+            }
+        }
+        return
+    }
 
     if (pinMode != null) {
         Box(Modifier.fillMaxSize().background(C.Navy).statusBarsPadding().navigationBarsPadding(), contentAlignment = Alignment.Center) {
@@ -576,11 +610,11 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
                 PinPad(title, sub, err, resetTick = tick) { pin ->
                     when (pinMode) {
                         "set1" -> { firstPin = pin; err = ""; pinMode = "set2"; tick++ }
-                        "set2" -> if (pin == firstPin) { s.setPin(pin); pinMode = null; err = "" } else { err = "PIN tidak sama, ulangi"; pinMode = "set1"; tick++ }
+                        "set2" -> if (pin == firstPin) { s.setPin(pin); if (wantAdults) { s.setAdults(true); wantAdults = false }; pinMode = null; err = "" } else { err = "PIN tidak sama, ulangi"; pinMode = "set1"; tick++ }
                         else -> if (s.checkPin(pin)) { s.clearPin(); pinMode = null; err = "" } else { err = "PIN salah"; tick++ }
                     }
                 }
-                Text("Batal", color = C.Aqua, modifier = Modifier.padding(top = 18.dp).clickable { pinMode = null; err = "" })
+                Text("Batal", color = C.Aqua, modifier = Modifier.padding(top = 18.dp).clickable { pinMode = null; err = ""; wantAdults = false })
             }
         }
         return
@@ -610,8 +644,14 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
 
         SettingHeader("Keamanan")
         SettingRow("Kunci aplikasi", if (s.lockEnabled) "Aktif — PIN $PIN_LEN digit" else "Mati", s.lockEnabled) {
-            if (s.lockEnabled) { err = ""; pinMode = "off" } else { err = ""; pinMode = "set1" }
+            if (s.lockEnabled && s.adults) info = "Kunci aplikasi wajib aktif selama Adults menyala. Matikan Adults dulu."
+            else if (s.lockEnabled) { info = ""; err = ""; pinMode = "off" } else { info = ""; err = ""; pinMode = "set1" }
         }
+        SettingRow("Adults", if (s.adults) "Aktif — film 21+ ditampilkan" else "Mati — film 21+ disembunyikan", s.adults) {
+            info = ""
+            if (s.adults) s.setAdults(false) else { pw = ""; pwErr = ""; askPw = true }
+        }
+        if (info.isNotEmpty()) Text(info, color = Color(0xFFFFB454), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         if (s.lockEnabled && biometricAvailable(ctx)) {
             SettingRow("Buka dengan sidik jari", "Alternatif selain PIN", s.biometric) { s.setBiometricPref(!s.biometric) }
         }

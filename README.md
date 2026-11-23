@@ -29,3 +29,7 @@ Rilis baru: naikkan angka di `version.txt` lalu push ke `main` — CI membuat ta
 ## v1.2.1
 - Crop otomatis dihapus; diganti crop manual yang bisa disimpan dan dimatikan.
 - Sinopsis film dari web ditampilkan di halaman detail.
+
+## v1.3.0
+- Desain baru penuh: logo kumbang tahi polygon, ikon launcher, UI baru di semua layar.
+- Fitur Adults (Profil): tombol on/off, butuh password; film bergenre `21+` hanya tampil bila Adults aktif. Mengaktifkan Adults mewajibkan kunci aplikasi (PIN) dan kunci tidak bisa dimatikan selama Adults menyala.

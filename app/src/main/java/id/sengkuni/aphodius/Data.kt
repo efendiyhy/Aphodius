@@ -16,6 +16,7 @@ import java.net.URL
 val DATA_URLS = listOf(
     "https://raw.githubusercontent.com/efendiyhy/master-stream-data/main/data.json",
 )
+private const val ADULTS_HASH = "f9df6085f1c1e0a24a806a19428ff92a5f5ad23dd4fe1ada92275c470b04bfb0"
 const val UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
 
 data class Film(
@@ -27,7 +28,10 @@ data class Film(
     val poster: String,
     val added: Long,
     val synopsis: String = "",
-)
+) {
+    /** Film dewasa: bergenre 21+ (disembunyikan kecuali fitur Adults aktif). */
+    val isAdult: Boolean get() = genres.any { it.trim().equals("21+", ignoreCase = true) }
+}
 
 data class Prog(val pos: Long, val dur: Long, val ts: Long) {
     val frac: Float get() = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f
@@ -108,6 +112,9 @@ class Store(ctx: Context) {
     var pinHash: String
         get() = sp.getString("pinHash", "") ?: ""
         set(v) { sp.edit().putString("pinHash", v).apply() }
+    var adults: Boolean
+        get() = sp.getBoolean("adults", false)
+        set(v) { sp.edit().putBoolean("adults", v).apply() }
     var biometric: Boolean
         get() = sp.getBoolean("biometric", false)
         set(v) { sp.edit().putBoolean("biometric", v).apply() }
@@ -134,7 +141,10 @@ class Store(ctx: Context) {
 
 class AppState(ctx: Context) {
     val store = Store(ctx)
-    var films by mutableStateOf<List<Film>>(emptyList())
+    var allFilms by mutableStateOf<List<Film>>(emptyList())
+    var adults by mutableStateOf(store.adults && store.pinHash.isNotEmpty())
+    /** Daftar yang tampil: film 21+ disembunyikan bila Adults mati. */
+    val films: List<Film> get() = if (adults) allFilms else allFilms.filter { !it.isAdult }
     var genres by mutableStateOf<List<String>>(emptyList())
     var loaded by mutableStateOf(false)
     var refreshing by mutableStateOf(false)
@@ -156,7 +166,7 @@ class AppState(ctx: Context) {
 
     private fun apply(text: String): Boolean = try {
         val (f, g) = parseFilms(text)
-        films = f.sortedByDescending { it.added }
+        allFilms = f.sortedByDescending { it.added }
         genres = g
         loaded = true
         true
@@ -222,7 +232,11 @@ class AppState(ctx: Context) {
         lockEnabled = true
     }
     fun checkPin(pin: String): Boolean = store.pinHash.isNotEmpty() && hashPin(store.pinSalt, pin) == store.pinHash
-    fun clearPin() { store.pinHash = ""; store.pinSalt = ""; lockEnabled = false; setBiometricPref(false) }
+    fun clearPin() { store.pinHash = ""; store.pinSalt = ""; lockEnabled = false; setBiometricPref(false); setAdults(false) }
+    fun setAdults(on: Boolean) { val v = on && lockEnabled; adults = v; store.adults = v }
+    /** Password fitur Adults = password web Master Stream (disimpan sebagai hash). */
+    fun checkAdultsPassword(pw: String): Boolean =
+        java.security.MessageDigest.getInstance("SHA-256").digest(pw.trim().toByteArray()).joinToString("") { "%02x".format(it) } == ADULTS_HASH
     private fun hashPin(salt: String, pin: String): String =
         java.security.MessageDigest.getInstance("SHA-256").digest("$salt:$pin".toByteArray()).joinToString("") { "%02x".format(it) }
 }

@@ -46,7 +46,7 @@ fun App(s: AppState) {
     var splash by remember { mutableStateOf(true) }
     var tab by remember { mutableStateOf(Tab.Home) }
     var stack by remember { mutableStateOf(listOf<Route>()) }
-    var locked by remember { mutableStateOf(s.lockEnabled) }
+    var locked by remember { mutableStateOf(s.lockEnabled) }  // Adults aktif => kunci wajib (lockEnabled dijamin true)
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
