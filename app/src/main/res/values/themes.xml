@@ -1,6 +1,6 @@
 <resources>
     <style name="Theme.Aphodius" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#030B14</item>
+        <item name="android:windowBackground">#050D16</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>

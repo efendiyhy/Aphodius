@@ -1,6 +1,6 @@
 # Aphodius
 
-Aplikasi streaming Android (tema biru laut) oleh SengkuniDeveloper.
+Aplikasi streaming Android (tema biru laut, logo kumbang tahi polygon) oleh SengkuniDeveloper.
 Memutar video dari koleksi link X (Twitter) yang disimpan di web **Master Stream**.
 
 ## Cara kerja
@@ -15,7 +15,10 @@ CI GitHub Actions (`.github/workflows/build.yml`) membangun APK. Rilis dibuat ot
 
 Rilis baru: naikkan angka di `version.txt` lalu push ke `main` — CI membuat tag dan rilis otomatis.
 
-Folder `portrait/`, `landscape/`, `00-design-system.svg`, `preview.html` adalah desain UI kit.
+## Desain
+- Logo: kumbang tahi bergaya polygon (low-poly). Aset ada di `branding/`; dibangkitkan ulang dengan `python3 tools/branding/build.py` (perlu `fonttools`, dan `rsvg-convert` untuk PNG).
+- Mockup UI: `portrait/`, `landscape/`, `00-design-system.svg`; buka `preview.html` untuk melihat semuanya. Bangkitkan ulang dengan `python3 tools/branding/mockups.py`.
+- Warna utama Aqua `#22C7EC`, aksen emas scarab `#F2A33A`, latar `#050D16`. Detail ada di `00-design-system.svg`.
 
 ## v1.2.0
 - Nama sapaan saat pertama kali dipasang, profil lokal, dan kunci aplikasi (PIN 4 digit + sidik jari opsional).

@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="360" viewBox="0 0 800 360" font-family="Roboto, Inter, Arial, sans-serif"><defs><linearGradient id="g89" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22C7EC" stop-opacity="1"/><stop offset="1" stop-color="#0A3A6B" stop-opacity="1"/></linearGradient><clipPath id="c90"><rect x="40" y="82" width="50" height="74" rx="10"/></clipPath><linearGradient id="g91" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3A9BD9" stop-opacity="1"/><stop offset="1" stop-color="#0B2A4A" stop-opacity="1"/></linearGradient><clipPath id="c92"><rect x="412" y="82" width="50" height="74" rx="10"/></clipPath><linearGradient id="g93" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1B6CA8" stop-opacity="1"/><stop offset="1" stop-color="#061A2E" stop-opacity="1"/></linearGradient><clipPath id="c94"><rect x="40" y="172" width="50" height="74" rx="10"/></clipPath><linearGradient id="g95" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5FB8E6" stop-opacity="1"/><stop offset="1" stop-color="#123C5E" stop-opacity="1"/></linearGradient><clipPath id="c96"><rect x="412" y="172" width="50" height="74" rx="10"/></clipPath><linearGradient id="g97" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0E94C4" stop-opacity="1"/><stop offset="1" stop-color="#04121F" stop-opacity="1"/></linearGradient><clipPath id="c98"><rect x="40" y="262" width="50" height="74" rx="10"/></clipPath><linearGradient id="g99" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0A84C6" stop-opacity="1"/><stop offset="1" stop-color="#05263F" stop-opacity="1"/></linearGradient><clipPath id="c100"><rect x="412" y="262" width="50" height="74" rx="10"/></clipPath></defs>
+<rect x="0" y="0" width="800" height="360" rx="0" fill="#050D16"/>
+<rect x="40" y="16" width="720" height="46" rx="16" fill="#0D1A28" stroke="#223850"/>
+<path transform="translate(54 27) scale(0.9166666666666666)" d="M15 4l-8 8 8 8" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<path transform="translate(88 27) scale(0.9166666666666666)" d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-6-6" fill="none" stroke="#8FA8BF" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="122" y="45" font-size="15" fill="#fff" font-weight="400" text-anchor="start" letter-spacing="0">kumbang</text>
+<g clip-path="url(#c90)"><rect x="40" y="82" width="50" height="74" fill="url(#g89)"/>
+<path d="M40.0,82.0 L56.66666666666667,82.0 L56.66666666666667,100.5Z" fill="#fff" fill-opacity="0.08"/>
+<path d="M40.0,82.0 L56.66666666666667,100.5 L40.0,100.5Z" fill="#000" fill-opacity="0.12"/>
+<path d="M40.0,100.5 L56.66666666666667,100.5 L56.66666666666667,119.0Z" fill="#fff" fill-opacity="0.06"/>
+<path d="M40.0,100.5 L56.66666666666667,119.0 L40.0,119.0Z" fill="#000" fill-opacity="0.10"/>
+<path d="M40.0,119.0 L56.66666666666667,119.0 L56.66666666666667,137.5Z" fill="#fff" fill-opacity="0.04"/>
+<path d="M40.0,119.0 L56.66666666666667,137.5 L40.0,137.5Z" fill="#000" fill-opacity="0.08"/>
+<path d="M40.0,137.5 L56.66666666666667,137.5 L56.66666666666667,156.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M40.0,137.5 L56.66666666666667,156.0 L40.0,156.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M56.66666666666667,82.0 L73.33333333333334,82.0 L73.33333333333334,100.5Z" fill="#fff" fill-opacity="0.10"/>
+<path d="M56.66666666666667,82.0 L73.33333333333334,100.5 L56.66666666666667,100.5Z" fill="#000" fill-opacity="0.06"/>
+<path d="M56.66666666666667,100.5 L73.33333333333334,100.5 L73.33333333333334,119.0Z" fill="#fff" fill-opacity="0.04"/>
+<path d="M56.66666666666667,100.5 L73.33333333333334,119.0 L56.66666666666667,119.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M56.66666666666667,119.0 L73.33333333333334,119.0 L73.33333333333334,137.5Z" fill="#fff" fill-opacity="0.08"/>
+<path d="M56.66666666666667,119.0 L73.33333333333334,137.5 L56.66666666666667,137.5Z" fill="#000" fill-opacity="0.14"/>
+<path d="M56.66666666666667,137.5 L73.33333333333334,137.5 L73.33333333333334,156.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M56.66666666666667,137.5 L73.33333333333334,156.0 L56.66666666666667,156.0Z" fill="#000" fill-opacity="0.10"/>
+<path d="M73.33333333333334,82.0 L90.00000000000001,82.0 L90.00000000000001,100.5Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M73.33333333333334,82.0 L90.00000000000001,100.5 L73.33333333333334,100.5Z" fill="#000" fill-opacity="0.16"/>
+<path d="M73.33333333333334,100.5 L90.00000000000001,100.5 L90.00000000000001,119.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M73.33333333333334,100.5 L90.00000000000001,119.0 L73.33333333333334,119.0Z" fill="#000" fill-opacity="0.10"/>
+<path d="M73.33333333333334,119.0 L90.00000000000001,119.0 L90.00000000000001,137.5Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M73.33333333333334,119.0 L90.00000000000001,137.5 L73.33333333333334,137.5Z" fill="#000" fill-opacity="0.04"/>
+<path d="M73.33333333333334,137.5 L90.00000000000001,137.5 L90.00000000000001,156.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M73.33333333333334,137.5 L90.00000000000001,156.0 L73.33333333333334,156.0Z" fill="#000" fill-opacity="0.02"/>
+</g>
+<text x="104" y="112" font-size="14" fill="#fff" font-weight="700" text-anchor="start" letter-spacing="0">Jejak Kumbang</text>
+<text x="104" y="132" font-size="12" fill="#8FA8BF" font-weight="400" text-anchor="start" letter-spacing="0">Film • 2023</text>
+<circle cx="376" cy="119" r="16" fill="#15283B"/>
+<path transform="translate(368 111) scale(0.6666666666666666)" d="M6 4l14 8-14 8z" fill="#22C7EC"/>
+<g clip-path="url(#c92)"><rect x="412" y="82" width="50" height="74" fill="url(#g91)"/>
+<path d="M412.0,82.0 L428.6666666666667,82.0 L412.0,100.5Z" fill="#fff" fill-opacity="0.11"/>
+<path d="M428.6666666666667,82.0 L428.6666666666667,100.5 L412.0,100.5Z" fill="#000" fill-opacity="0.07"/>
+<path d="M412.0,100.5 L428.6666666666667,100.5 L428.6666666666667,119.0Z" fill="#fff" fill-opacity="0.08"/>
+<path d="M412.0,100.5 L428.6666666666667,119.0 L412.0,119.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M412.0,119.0 L428.6666666666667,119.0 L412.0,137.5Z" fill="#fff" fill-opacity="0.05"/>
+<path d="M428.6666666666667,119.0 L428.6666666666667,137.5 L412.0,137.5Z" fill="#000" fill-opacity="0.09"/>
+<path d="M412.0,137.5 L428.6666666666667,137.5 L428.6666666666667,156.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M412.0,137.5 L428.6666666666667,156.0 L412.0,156.0Z" fill="#000" fill-opacity="0.04"/>
+<path d="M428.6666666666667,82.0 L445.33333333333337,82.0 L445.33333333333337,100.5Z" fill="#fff" fill-opacity="0.04"/>
+<path d="M428.6666666666667,82.0 L445.33333333333337,100.5 L428.6666666666667,100.5Z" fill="#000" fill-opacity="0.14"/>
+<path d="M428.6666666666667,100.5 L445.33333333333337,100.5 L445.33333333333337,119.0Z" fill="#fff" fill-opacity="0.10"/>
+<path d="M428.6666666666667,100.5 L445.33333333333337,119.0 L428.6666666666667,119.0Z" fill="#000" fill-opacity="0.10"/>
+<path d="M428.6666666666667,119.0 L445.33333333333337,119.0 L445.33333333333337,137.5Z" fill="#fff" fill-opacity="0.06"/>
+<path d="M428.6666666666667,119.0 L445.33333333333337,137.5 L428.6666666666667,137.5Z" fill="#000" fill-opacity="0.10"/>
+<path d="M428.6666666666667,137.5 L445.33333333333337,137.5 L445.33333333333337,156.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M428.6666666666667,137.5 L445.33333333333337,156.0 L428.6666666666667,156.0Z" fill="#000" fill-opacity="0.06"/>
+<path d="M445.3333333333333,82.0 L462.0,82.0 L445.3333333333333,100.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M462.0,82.0 L462.0,100.5 L445.3333333333333,100.5Z" fill="#000" fill-opacity="0.05"/>
+<path d="M445.3333333333333,100.5 L462.0,100.5 L462.0,119.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M445.3333333333333,100.5 L462.0,119.0 L445.3333333333333,119.0Z" fill="#000" fill-opacity="0.06"/>
+<path d="M445.3333333333333,119.0 L462.0,119.0 L445.3333333333333,137.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M462.0,119.0 L462.0,137.5 L445.3333333333333,137.5Z" fill="#000" fill-opacity="0.07"/>
+<path d="M445.3333333333333,137.5 L462.0,137.5 L462.0,156.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M445.3333333333333,137.5 L462.0,156.0 L445.3333333333333,156.0Z" fill="#000" fill-opacity="0.08"/>
+</g>
+<text x="476" y="112" font-size="14" fill="#fff" font-weight="700" text-anchor="start" letter-spacing="0">Malam Tanpa Bintang</text>
+<text x="476" y="132" font-size="12" fill="#8FA8BF" font-weight="400" text-anchor="start" letter-spacing="0">Film • 2022</text>
+<circle cx="748" cy="119" r="16" fill="#15283B"/>
+<path transform="translate(740 111) scale(0.6666666666666666)" d="M6 4l14 8-14 8z" fill="#22C7EC"/>
+<g clip-path="url(#c94)"><rect x="40" y="172" width="50" height="74" fill="url(#g93)"/>
+<path d="M40.0,172.0 L56.66666666666667,172.0 L40.0,190.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M56.66666666666667,172.0 L56.66666666666667,190.5 L40.0,190.5Z" fill="#000" fill-opacity="0.03"/>
+<path d="M40.0,190.5 L56.66666666666667,190.5 L56.66666666666667,209.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M40.0,190.5 L56.66666666666667,209.0 L40.0,209.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M40.0,209.0 L56.66666666666667,209.0 L40.0,227.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M56.66666666666667,209.0 L56.66666666666667,227.5 L40.0,227.5Z" fill="#000" fill-opacity="0.13"/>
+<path d="M40.0,227.5 L56.66666666666667,227.5 L56.66666666666667,246.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M40.0,227.5 L56.66666666666667,246.0 L40.0,246.0Z" fill="#000" fill-opacity="0.08"/>
+<path d="M56.66666666666667,172.0 L73.33333333333334,172.0 L73.33333333333334,190.5Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M56.66666666666667,172.0 L73.33333333333334,190.5 L56.66666666666667,190.5Z" fill="#000" fill-opacity="0.02"/>
+<path d="M56.66666666666667,190.5 L73.33333333333334,190.5 L73.33333333333334,209.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M56.66666666666667,190.5 L73.33333333333334,209.0 L56.66666666666667,209.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M56.66666666666667,209.0 L73.33333333333334,209.0 L73.33333333333334,227.5Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M56.66666666666667,209.0 L73.33333333333334,227.5 L56.66666666666667,227.5Z" fill="#000" fill-opacity="0.02"/>
+<path d="M56.66666666666667,227.5 L73.33333333333334,227.5 L73.33333333333334,246.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M56.66666666666667,227.5 L73.33333333333334,246.0 L56.66666666666667,246.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M73.33333333333334,172.0 L90.00000000000001,172.0 L73.33333333333334,190.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M90.00000000000001,172.0 L90.00000000000001,190.5 L73.33333333333334,190.5Z" fill="#000" fill-opacity="0.13"/>
+<path d="M73.33333333333334,190.5 L90.00000000000001,190.5 L90.00000000000001,209.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M73.33333333333334,190.5 L90.00000000000001,209.0 L73.33333333333334,209.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M73.33333333333334,209.0 L90.00000000000001,209.0 L73.33333333333334,227.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M90.00000000000001,209.0 L90.00000000000001,227.5 L73.33333333333334,227.5Z" fill="#000" fill-opacity="0.03"/>
+<path d="M73.33333333333334,227.5 L90.00000000000001,227.5 L90.00000000000001,246.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M73.33333333333334,227.5 L90.00000000000001,246.0 L73.33333333333334,246.0Z" fill="#000" fill-opacity="0.08"/>
+</g>
+<text x="104" y="202" font-size="14" fill="#fff" font-weight="700" text-anchor="start" letter-spacing="0">Samudra Terakhir</text>
+<text x="104" y="222" font-size="12" fill="#8FA8BF" font-weight="400" text-anchor="start" letter-spacing="0">Film • 2024</text>
+<circle cx="376" cy="209" r="16" fill="#15283B"/>
+<path transform="translate(368 201) scale(0.6666666666666666)" d="M6 4l14 8-14 8z" fill="#22C7EC"/>
+<g clip-path="url(#c96)"><rect x="412" y="172" width="50" height="74" fill="url(#g95)"/>
+<path d="M412.0,172.0 L428.6666666666667,172.0 L428.6666666666667,190.5Z" fill="#fff" fill-opacity="0.08"/>
+<path d="M412.0,172.0 L428.6666666666667,190.5 L412.0,190.5Z" fill="#000" fill-opacity="0.04"/>
+<path d="M412.0,190.5 L428.6666666666667,190.5 L428.6666666666667,209.0Z" fill="#fff" fill-opacity="0.06"/>
+<path d="M412.0,190.5 L428.6666666666667,209.0 L412.0,209.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M412.0,209.0 L428.6666666666667,209.0 L428.6666666666667,227.5Z" fill="#fff" fill-opacity="0.04"/>
+<path d="M412.0,209.0 L428.6666666666667,227.5 L412.0,227.5Z" fill="#000" fill-opacity="0.04"/>
+<path d="M412.0,227.5 L428.6666666666667,227.5 L428.6666666666667,246.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M412.0,227.5 L428.6666666666667,246.0 L412.0,246.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M428.6666666666667,172.0 L445.33333333333337,172.0 L445.33333333333337,190.5Z" fill="#fff" fill-opacity="0.10"/>
+<path d="M428.6666666666667,172.0 L445.33333333333337,190.5 L428.6666666666667,190.5Z" fill="#000" fill-opacity="0.10"/>
+<path d="M428.6666666666667,190.5 L445.33333333333337,190.5 L445.33333333333337,209.0Z" fill="#fff" fill-opacity="0.04"/>
+<path d="M428.6666666666667,190.5 L445.33333333333337,209.0 L428.6666666666667,209.0Z" fill="#000" fill-opacity="0.14"/>
+<path d="M428.6666666666667,209.0 L445.33333333333337,209.0 L445.33333333333337,227.5Z" fill="#fff" fill-opacity="0.08"/>
+<path d="M428.6666666666667,209.0 L445.33333333333337,227.5 L428.6666666666667,227.5Z" fill="#000" fill-opacity="0.02"/>
+<path d="M428.6666666666667,227.5 L445.33333333333337,227.5 L445.33333333333337,246.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M428.6666666666667,227.5 L445.33333333333337,246.0 L428.6666666666667,246.0Z" fill="#000" fill-opacity="0.10"/>
+<path d="M445.3333333333333,172.0 L462.0,172.0 L462.0,190.5Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M445.3333333333333,172.0 L462.0,190.5 L445.3333333333333,190.5Z" fill="#000" fill-opacity="0.16"/>
+<path d="M445.3333333333333,190.5 L462.0,190.5 L462.0,209.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M445.3333333333333,190.5 L462.0,209.0 L445.3333333333333,209.0Z" fill="#000" fill-opacity="0.10"/>
+<path d="M445.3333333333333,209.0 L462.0,209.0 L462.0,227.5Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M445.3333333333333,209.0 L462.0,227.5 L445.3333333333333,227.5Z" fill="#000" fill-opacity="0.04"/>
+<path d="M445.3333333333333,227.5 L462.0,227.5 L462.0,246.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M445.3333333333333,227.5 L462.0,246.0 L445.3333333333333,246.0Z" fill="#000" fill-opacity="0.02"/>
+</g>
+<text x="476" y="202" font-size="14" fill="#fff" font-weight="700" text-anchor="start" letter-spacing="0">Kota di Balik Kabut</text>
+<text x="476" y="222" font-size="12" fill="#8FA8BF" font-weight="400" text-anchor="start" letter-spacing="0">Film • 2021</text>
+<circle cx="748" cy="209" r="16" fill="#15283B"/>
+<path transform="translate(740 201) scale(0.6666666666666666)" d="M6 4l14 8-14 8z" fill="#22C7EC"/>
+<g clip-path="url(#c98)"><rect x="40" y="262" width="50" height="74" fill="url(#g97)"/>
+<path d="M40.0,262.0 L56.66666666666667,262.0 L40.0,280.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M56.66666666666667,262.0 L56.66666666666667,280.5 L40.0,280.5Z" fill="#000" fill-opacity="0.13"/>
+<path d="M40.0,280.5 L56.66666666666667,280.5 L56.66666666666667,299.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M40.0,280.5 L56.66666666666667,299.0 L40.0,299.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M40.0,299.0 L56.66666666666667,299.0 L40.0,317.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M56.66666666666667,299.0 L56.66666666666667,317.5 L40.0,317.5Z" fill="#000" fill-opacity="0.03"/>
+<path d="M40.0,317.5 L56.66666666666667,317.5 L56.66666666666667,336.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M40.0,317.5 L56.66666666666667,336.0 L40.0,336.0Z" fill="#000" fill-opacity="0.08"/>
+<path d="M56.66666666666667,262.0 L73.33333333333334,262.0 L73.33333333333334,280.5Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M56.66666666666667,262.0 L73.33333333333334,280.5 L56.66666666666667,280.5Z" fill="#000" fill-opacity="0.02"/>
+<path d="M56.66666666666667,280.5 L73.33333333333334,280.5 L73.33333333333334,299.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M56.66666666666667,280.5 L73.33333333333334,299.0 L56.66666666666667,299.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M56.66666666666667,299.0 L73.33333333333334,299.0 L73.33333333333334,317.5Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M56.66666666666667,299.0 L73.33333333333334,317.5 L56.66666666666667,317.5Z" fill="#000" fill-opacity="0.02"/>
+<path d="M56.66666666666667,317.5 L73.33333333333334,317.5 L73.33333333333334,336.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M56.66666666666667,317.5 L73.33333333333334,336.0 L56.66666666666667,336.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M73.33333333333334,262.0 L90.00000000000001,262.0 L73.33333333333334,280.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M90.00000000000001,262.0 L90.00000000000001,280.5 L73.33333333333334,280.5Z" fill="#000" fill-opacity="0.03"/>
+<path d="M73.33333333333334,280.5 L90.00000000000001,280.5 L90.00000000000001,299.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M73.33333333333334,280.5 L90.00000000000001,299.0 L73.33333333333334,299.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M73.33333333333334,299.0 L90.00000000000001,299.0 L73.33333333333334,317.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M90.00000000000001,299.0 L90.00000000000001,317.5 L73.33333333333334,317.5Z" fill="#000" fill-opacity="0.13"/>
+<path d="M73.33333333333334,317.5 L90.00000000000001,317.5 L90.00000000000001,336.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M73.33333333333334,317.5 L90.00000000000001,336.0 L73.33333333333334,336.0Z" fill="#000" fill-opacity="0.08"/>
+</g>
+<text x="104" y="292" font-size="14" fill="#fff" font-weight="700" text-anchor="start" letter-spacing="0">Rimba Biru</text>
+<text x="104" y="312" font-size="12" fill="#8FA8BF" font-weight="400" text-anchor="start" letter-spacing="0">Film • 2023</text>
+<circle cx="376" cy="299" r="16" fill="#15283B"/>
+<path transform="translate(368 291) scale(0.6666666666666666)" d="M6 4l14 8-14 8z" fill="#22C7EC"/>
+<g clip-path="url(#c100)"><rect x="412" y="262" width="50" height="74" fill="url(#g99)"/>
+<path d="M412.0,262.0 L428.6666666666667,262.0 L412.0,280.5Z" fill="#fff" fill-opacity="0.09"/>
+<path d="M428.6666666666667,262.0 L428.6666666666667,280.5 L412.0,280.5Z" fill="#000" fill-opacity="0.13"/>
+<path d="M412.0,280.5 L428.6666666666667,280.5 L428.6666666666667,299.0Z" fill="#fff" fill-opacity="0.10"/>
+<path d="M412.0,280.5 L428.6666666666667,299.0 L412.0,299.0Z" fill="#000" fill-opacity="0.10"/>
+<path d="M412.0,299.0 L428.6666666666667,299.0 L412.0,317.5Z" fill="#fff" fill-opacity="0.11"/>
+<path d="M428.6666666666667,299.0 L428.6666666666667,317.5 L412.0,317.5Z" fill="#000" fill-opacity="0.03"/>
+<path d="M412.0,317.5 L428.6666666666667,317.5 L428.6666666666667,336.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M412.0,317.5 L428.6666666666667,336.0 L412.0,336.0Z" fill="#000" fill-opacity="0.16"/>
+<path d="M428.6666666666667,262.0 L445.33333333333337,262.0 L445.33333333333337,280.5Z" fill="#fff" fill-opacity="0.08"/>
+<path d="M428.6666666666667,262.0 L445.33333333333337,280.5 L428.6666666666667,280.5Z" fill="#000" fill-opacity="0.06"/>
+<path d="M428.6666666666667,280.5 L445.33333333333337,280.5 L445.33333333333337,299.0Z" fill="#fff" fill-opacity="0.06"/>
+<path d="M428.6666666666667,280.5 L445.33333333333337,299.0 L428.6666666666667,299.0Z" fill="#000" fill-opacity="0.06"/>
+<path d="M428.6666666666667,299.0 L445.33333333333337,299.0 L445.33333333333337,317.5Z" fill="#fff" fill-opacity="0.04"/>
+<path d="M428.6666666666667,299.0 L445.33333333333337,317.5 L428.6666666666667,317.5Z" fill="#000" fill-opacity="0.06"/>
+<path d="M428.6666666666667,317.5 L445.33333333333337,317.5 L445.33333333333337,336.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M428.6666666666667,317.5 L445.33333333333337,336.0 L428.6666666666667,336.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M445.3333333333333,262.0 L462.0,262.0 L445.3333333333333,280.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M462.0,262.0 L462.0,280.5 L445.3333333333333,280.5Z" fill="#000" fill-opacity="0.15"/>
+<path d="M445.3333333333333,280.5 L462.0,280.5 L462.0,299.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M445.3333333333333,280.5 L462.0,299.0 L445.3333333333333,299.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M445.3333333333333,299.0 L462.0,299.0 L445.3333333333333,317.5Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M462.0,299.0 L462.0,317.5 L445.3333333333333,317.5Z" fill="#000" fill-opacity="0.05"/>
+<path d="M445.3333333333333,317.5 L462.0,317.5 L462.0,336.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M445.3333333333333,317.5 L462.0,336.0 L445.3333333333333,336.0Z" fill="#000" fill-opacity="0.08"/>
+</g>
+<text x="476" y="292" font-size="14" fill="#fff" font-weight="700" text-anchor="start" letter-spacing="0">Lintang</text>
+<text x="476" y="312" font-size="12" fill="#8FA8BF" font-weight="400" text-anchor="start" letter-spacing="0">Film • 2022</text>
+<circle cx="748" cy="299" r="16" fill="#15283B"/>
+<path transform="translate(740 291) scale(0.6666666666666666)" d="M6 4l14 8-14 8z" fill="#22C7EC"/>
+</svg>

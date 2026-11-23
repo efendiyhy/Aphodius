@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="360" viewBox="0 0 800 360" font-family="Roboto, Inter, Arial, sans-serif"><defs><linearGradient id="g146" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1B6CA8" stop-opacity="1"/><stop offset="1" stop-color="#061A2E" stop-opacity="1"/></linearGradient><clipPath id="c147"><rect x="0" y="0" width="800" height="360" rx="0"/></clipPath><linearGradient id="g148" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0.7"/><stop offset="0.3" stop-color="#000" stop-opacity="0.25"/><stop offset="0.65" stop-color="#000" stop-opacity="0.25"/><stop offset="1" stop-color="#000" stop-opacity="0.8"/></linearGradient></defs>
+<g clip-path="url(#c147)"><rect x="0" y="0" width="800" height="360" fill="url(#g146)"/>
+<path d="M0.0,0.0 L266.6666666666667,0.0 L0.0,90.0Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M266.6666666666667,0.0 L266.6666666666667,90.0 L0.0,90.0Z" fill="#000" fill-opacity="0.03"/>
+<path d="M0.0,90.0 L266.6666666666667,90.0 L266.6666666666667,180.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M0.0,90.0 L266.6666666666667,180.0 L0.0,180.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M0.0,180.0 L266.6666666666667,180.0 L0.0,270.0Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M266.6666666666667,180.0 L266.6666666666667,270.0 L0.0,270.0Z" fill="#000" fill-opacity="0.13"/>
+<path d="M0.0,270.0 L266.6666666666667,270.0 L266.6666666666667,360.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M0.0,270.0 L266.6666666666667,360.0 L0.0,360.0Z" fill="#000" fill-opacity="0.08"/>
+<path d="M266.6666666666667,0.0 L533.3333333333334,0.0 L533.3333333333334,90.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M266.6666666666667,0.0 L533.3333333333334,90.0 L266.6666666666667,90.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M266.6666666666667,90.0 L533.3333333333334,90.0 L533.3333333333334,180.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M266.6666666666667,90.0 L533.3333333333334,180.0 L266.6666666666667,180.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M266.6666666666667,180.0 L533.3333333333334,180.0 L533.3333333333334,270.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M266.6666666666667,180.0 L533.3333333333334,270.0 L266.6666666666667,270.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M266.6666666666667,270.0 L533.3333333333334,270.0 L533.3333333333334,360.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M266.6666666666667,270.0 L533.3333333333334,360.0 L266.6666666666667,360.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M533.3333333333334,0.0 L800.0,0.0 L533.3333333333334,90.0Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M800.0,0.0 L800.0,90.0 L533.3333333333334,90.0Z" fill="#000" fill-opacity="0.13"/>
+<path d="M533.3333333333334,90.0 L800.0,90.0 L800.0,180.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M533.3333333333334,90.0 L800.0,180.0 L533.3333333333334,180.0Z" fill="#000" fill-opacity="0.02"/>
+<path d="M533.3333333333334,180.0 L800.0,180.0 L533.3333333333334,270.0Z" fill="#fff" fill-opacity="0.07"/>
+<path d="M800.0,180.0 L800.0,270.0 L533.3333333333334,270.0Z" fill="#000" fill-opacity="0.03"/>
+<path d="M533.3333333333334,270.0 L800.0,270.0 L800.0,360.0Z" fill="#fff" fill-opacity="0.02"/>
+<path d="M533.3333333333334,270.0 L800.0,360.0 L533.3333333333334,360.0Z" fill="#000" fill-opacity="0.08"/>
+</g>
+<rect x="0" y="0" width="800" height="360" rx="0" fill="url(#g148)"/>
+<circle cx="44" cy="40" r="20" fill="#000"/>
+<path transform="translate(34 30) scale(0.8333333333333334)" d="M15 4l-8 8 8 8" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="400" y="46" font-size="15" fill="#fff" font-weight="700" text-anchor="middle" letter-spacing="0">Samudra Terakhir</text>
+<circle cx="756" cy="40" r="20" fill="#000"/>
+<path transform="translate(746 30) scale(0.8333333333333334)" d="M3 6h18v12H3zM7 10h10v4H7z" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<path transform="translate(288 154) scale(1.8333333333333333)" d="M4 12a8 8 0 1 0 3-6.2M4 3v5h5" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="310" y="181" font-size="11" fill="#fff" font-weight="700" text-anchor="middle" letter-spacing="0">10</text>
+<circle cx="400" cy="180" r="36" fill="#22C7EC"/>
+<path transform="translate(384 164) scale(1.3333333333333333)" d="M6 4h4v16H6zM14 4h4v16h-4z" fill="#031019"/>
+<path transform="translate(468 154) scale(1.8333333333333333)" d="M20 12a8 8 0 1 1-3-6.2M20 3v5h-5" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="490" y="181" font-size="11" fill="#fff" font-weight="700" text-anchor="middle" letter-spacing="0">10</text>
+<text x="40" y="270" font-size="12" fill="#fff" font-weight="500" text-anchor="start" letter-spacing="0">21:05</text>
+<text x="760" y="270" font-size="12" fill="#8FA8BF" font-weight="500" text-anchor="end" letter-spacing="0">-38:12</text>
+<rect x="40" y="280" width="720" height="4" rx="2" fill="#fff" fill-opacity="0.28"/>
+<rect x="40" y="280" width="260" height="4" rx="2" fill="#22C7EC"/>
+<circle cx="300" cy="282" r="8" fill="#22C7EC"/>
+<path transform="translate(109 304) scale(0.9166666666666666)" d="M3 9h4l5-4v14l-5-4H3zM16 8a5 5 0 0 1 0 8" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="120" y="346" font-size="11" fill="#fff" font-weight="400" text-anchor="middle" letter-spacing="0">Suara</text>
+<path transform="translate(296 304) scale(0.9166666666666666)" d="M4 7h8M16 7h4M4 17h4M12 17h8M12 4v6M8 14v6" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="307" y="346" font-size="11" fill="#fff" font-weight="400" text-anchor="middle" letter-spacing="0">Kualitas · 720p</text>
+<path transform="translate(483 304) scale(0.9166666666666666)" d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="494" y="346" font-size="11" fill="#fff" font-weight="400" text-anchor="middle" letter-spacing="0">Kecepatan · 1x</text>
+<path transform="translate(670 304) scale(0.9166666666666666)" d="M5 4l10 8-10 8zM19 5v14" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="681" y="346" font-size="11" fill="#fff" font-weight="400" text-anchor="middle" letter-spacing="0">Berikutnya</text>
+</svg>

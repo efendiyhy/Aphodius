@@ -12,6 +12,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -29,6 +30,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -303,7 +305,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         hud?.let {
             Text(
                 it, color = Color.White, fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 64.dp).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = .6f)).padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 64.dp).clip(RoundedCornerShape(50)).background(C.Surface.copy(alpha = .92f)).padding(horizontal = 18.dp, vertical = 9.dp),
             )
         }
 
@@ -314,7 +316,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                 Text("Menyiapkan video…", color = Color.White)
                 Text(film.name, color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
             }
-            Icon(Ic.Back, "Kembali", tint = Color.White, modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(16.dp).size(28.dp).clickable { onBack() })
+            IconBtn(Ic.Back, "Kembali", onBack, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(16.dp), glass = true)
         }
 
         if (phase == 2) {
@@ -331,30 +333,30 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
 
         // Kontrol pemutar
         AnimatedVisibility(visible = controls && phase == 1, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .45f))) {
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = .70f), 0.30f to Color.Black.copy(alpha = .25f), 0.65f to Color.Black.copy(alpha = .25f), 1f to Color.Black.copy(alpha = .80f)))) {
                 Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Ic.Back, "Kembali", tint = Color.White, modifier = Modifier.size(28.dp).clickable { onBack() })
+                    IconBtn(Ic.Back, "Kembali", onBack, glass = true)
                     Text(film.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-                    Icon(Ic.Aspect, "Rasio layar", tint = Color.White, modifier = Modifier.size(26.dp).clickable { resize = (resize + 1) % resizeModes.size; hud = resizeModes[resize].second })
+                    IconBtn(Ic.Aspect, "Rasio layar", { resize = (resize + 1) % resizeModes.size; hud = resizeModes[resize].second }, glass = true)
                 }
                 Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(36.dp), verticalAlignment = Alignment.CenterVertically) {
                     SeekIcon(Ic.Rewind) { seekBy(-10_000) }
-                    Box(Modifier.size(64.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f)).clickable { togglePlay() }, contentAlignment = Alignment.Center) {
-                        Icon(if (isPlaying) Ic.PauseFill else Ic.PlayFill, if (isPlaying) "Jeda" else "Putar", tint = Color.White, modifier = Modifier.size(30.dp))
+                    Box(Modifier.size(72.dp).clip(CircleShape).background(C.Aqua).clickable { togglePlay() }, contentAlignment = Alignment.Center) {
+                        Icon(if (isPlaying) Ic.PauseFill else Ic.PlayFill, if (isPlaying) "Jeda" else "Putar", tint = C.OnAqua, modifier = Modifier.size(32.dp))
                     }
                     SeekIcon(Ic.Forward) { seekBy(10_000) }
                 }
                 Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 10.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         val shown = if (dragging) (dragFrac * dur).toLong() else pos
-                        Text(fmtTime(shown), color = Color.White, fontSize = 12.sp)
-                        Text("-" + fmtTime((dur - shown).coerceAtLeast(0)), color = Color.White, fontSize = 12.sp)
+                        Text(fmtTime(shown), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Text("-" + fmtTime((dur - shown).coerceAtLeast(0)), color = C.Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     }
                     Slider(
                         value = if (dragging) dragFrac else if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f,
                         onValueChange = { dragging = true; dragFrac = it },
                         onValueChangeFinished = { if (dur > 0) player.seekTo((dragFrac * dur).toLong()); dragging = false },
-                        colors = SliderDefaults.colors(thumbColor = C.Aqua, activeTrackColor = C.Aqua, inactiveTrackColor = Color.White.copy(alpha = .3f)),
+                        colors = SliderDefaults.colors(thumbColor = C.Aqua, activeTrackColor = C.Aqua, inactiveTrackColor = Color.White.copy(alpha = .28f)),
                         modifier = Modifier.fillMaxWidth().height(28.dp),
                     )
                     Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -372,7 +374,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         if (panel != null && phase == 1) {
             Column(
                 Modifier.align(Alignment.CenterEnd).statusBarsPadding().navigationBarsPadding().padding(end = 24.dp)
-                    .width(270.dp).clip(RoundedCornerShape(12.dp)).background(C.Surface.copy(alpha = .97f)).padding(vertical = 8.dp)
+                    .width(280.dp).clip(RoundedCornerShape(20.dp)).background(C.Surface.copy(alpha = .97f)).border(1.dp, C.Outline, RoundedCornerShape(20.dp)).padding(vertical = 8.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
                 when (panel) {
@@ -448,11 +450,11 @@ private fun BarButton(icon: ImageVector, label: String, onClick: () -> Unit) {
 
 @Composable
 private fun PanelTitle(t: String) =
-    Text(t, color = C.Muted, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+    Text(t.uppercase(), color = C.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
 
 @Composable
 private fun PanelItem(text: String, selected: Boolean, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(text, color = if (selected) C.Aqua else Color.White, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f))
         if (selected) Icon(Ic.Check, null, tint = C.Aqua, modifier = Modifier.size(20.dp))
     }

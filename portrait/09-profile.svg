@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="800" viewBox="0 0 360 800" font-family="Roboto, Inter, Arial, sans-serif"><defs><linearGradient id="g66" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0A84C6" stop-opacity="1"/><stop offset="1" stop-color="#22C7EC" stop-opacity="1"/></linearGradient></defs>
+<rect x="0" y="0" width="360" height="800" rx="0" fill="#050D16"/>
+<text x="20" y="24" font-size="12" fill="#fff" font-weight="700" text-anchor="start" letter-spacing="0">09.41</text>
+<rect x="308" y="15" width="24" height="10" rx="3" fill="none" stroke="#ffffffaa"/>
+<rect x="310" y="17" width="16" height="6" rx="1.5" fill="#fff"/>
+<circle cx="38" cy="68" r="20" fill="#15283B"/>
+<path transform="translate(28 58) scale(0.8333333333333334)" d="M15 4l-8 8 8 8" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="70" y="76" font-size="24" fill="#fff" font-weight="900" text-anchor="start" letter-spacing="0">Profil</text>
+<circle cx="180" cy="160" r="42" fill="url(#g66)"/>
+<text x="180" y="175.12" font-size="42.0" fill="#fff" font-weight="700" text-anchor="middle" letter-spacing="0">B</text>
+<text x="180" y="236" font-size="20" fill="#fff" font-weight="700" text-anchor="middle" letter-spacing="0">Budi</text>
+<text x="180" y="258" font-size="13" fill="#22C7EC" font-weight="400" text-anchor="middle" letter-spacing="0">Ubah nama sapaan</text>
+<text x="16" y="310" font-size="11" fill="#22C7EC" font-weight="700" text-anchor="start" letter-spacing="1.5">KEAMANAN</text>
+<text x="16" y="344" font-size="15" fill="#fff" font-weight="400" text-anchor="start" letter-spacing="0">Kunci aplikasi</text>
+<text x="16" y="363" font-size="12" fill="#8FA8BF" font-weight="400" text-anchor="start" letter-spacing="0">Aktif — PIN 4 digit</text>
+<rect x="288" y="332" width="52" height="32" rx="16" fill="#22C7EC"/>
+<circle cx="324" cy="348" r="11" fill="#031019"/>
+<text x="16" y="402" font-size="15" fill="#fff" font-weight="400" text-anchor="start" letter-spacing="0">Buka dengan sidik jari</text>
+<text x="16" y="421" font-size="12" fill="#8FA8BF" font-weight="400" text-anchor="start" letter-spacing="0">Alternatif selain PIN</text>
+<rect x="288" y="390" width="52" height="32" rx="16" fill="#22C7EC"/>
+<circle cx="324" cy="406" r="11" fill="#031019"/>
+<text x="16" y="470" font-size="11" fill="#22C7EC" font-weight="700" text-anchor="start" letter-spacing="1.5">PEMUTAR</text>
+<text x="16" y="504" font-size="15" fill="#fff" font-weight="400" text-anchor="start" letter-spacing="0">Crop video</text>
+<text x="16" y="523" font-size="12" fill="#8FA8BF" font-weight="400" text-anchor="start" letter-spacing="0">Memakai crop tersimpan dari pemutar</text>
+<rect x="288" y="492" width="52" height="32" rx="16" fill="#15283B"/>
+<circle cx="304" cy="508" r="9" fill="#8FA8BF"/>
+<text x="16" y="572" font-size="11" fill="#22C7EC" font-weight="700" text-anchor="start" letter-spacing="1.5">TENTANG</text>
+<text x="16" y="604" font-size="14" fill="#8FA8BF" font-weight="400" text-anchor="start" letter-spacing="0">Aphodius v1.2.1</text>
+<rect x="16" y="630" width="328" height="48" rx="14" fill="#fff" fill-opacity="0.14"/>
+<path transform="translate(108 644) scale(0.8333333333333334)" d="M20 12a8 8 0 1 1-3-6.2M20 3v5h-5" fill="none" stroke="#fff" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="140" y="660" font-size="14" fill="#fff" font-weight="700" text-anchor="start" letter-spacing="0.5">Cek pembaruan</text>
+</svg>
