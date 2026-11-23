@@ -514,14 +514,14 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
 
     fun onSignal(from: String, type: String, data: String) {
         post {
-            if (stopped || track == null || from == room.me) return@execute
+            if (stopped || track == null || from == room.me) return@post
             runCatching {
                 when (type) {
                     "offer" -> {
                         val ex = peers[from]
                         // tabrakan penawaran: uid yang lebih kecil menang sebagai penawar
-                        if (ex != null && ex.signalingState() == PeerConnection.SignalingState.HAVE_LOCAL_OFFER && room.me < from) return@execute
-                        val pc = newPc(from) ?: return@execute
+                        if (ex != null && ex.signalingState() == PeerConnection.SignalingState.HAVE_LOCAL_OFFER && room.me < from) return@post
+                        val pc = newPc(from) ?: return@post
                         pc.setRemoteDescription(object : Sdp() {
                             override fun onSetSuccess() {
                                 post {
@@ -537,7 +537,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
                         }, SessionDescription(SessionDescription.Type.OFFER, data))
                     }
                     "answer" -> {
-                        val pc = peers[from] ?: return@execute
+                        val pc = peers[from] ?: return@post
                         pc.setRemoteDescription(object : Sdp() {
                             override fun onSetSuccess() { post { remoteSet.add(from); flush(from, pc) } }
                         }, SessionDescription(SessionDescription.Type.ANSWER, data))
@@ -562,7 +562,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
     /** Tutup koneksi ke anggota yang sudah keluar atau mematikan suara. */
     fun sync(members: List<NbMember>) {
         post {
-            if (stopped) return@execute
+            if (stopped) return@post
             val live = members.filter { it.voice && it.uid != room.me }.map { it.uid }.toSet()
             peers.keys.filter { it !in live }.forEach { k ->
                 peers.remove(k)?.close(); remoteSet.remove(k); pending.remove(k); room.peerState.remove(k)
