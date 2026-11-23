@@ -1,58 +1,123 @@
-# Aphodius
+<p align="center">
+  <img src="branding/aphodius-app-icon-512.png" width="120" alt="Aphodius">
+</p>
 
-Aplikasi streaming Android (tema biru laut, logo kumbang tahi polygon) oleh SengkuniDeveloper.
-Memutar video dari koleksi link X (Twitter) yang disimpan di web **Master Stream**.
+<h1 align="center">Aphodius</h1>
+<p align="center"><b>Nonton film dan series favoritmu dalam satu aplikasi yang rapi, cepat, dan tanpa ribet.</b></p>
 
-## Cara kerja
-- Daftar film dibaca dari `data.json` Master Stream
-  (repo `efendiyhy/master-stream-data` → `data.json`, harus public), diperbarui otomatis setiap aplikasi dibuka.
-- Link X diekstrak menjadi URL video langsung (`video.twimg.com`), lalu diputar penuh layar — tanpa tampilan X.
-- Pemutar: ketuk dua kali kiri/kanan = mundur/maju 10 dtk, geser vertikal kiri = kecerahan, kanan = suara,
-  pilih kualitas, kecepatan, rasio layar, lanjut menonton otomatis.
+<p align="center">
+  <a href="https://github.com/efendiyhy/Aphodius/releases/latest"><img alt="Unduh" src="https://img.shields.io/github/v/release/efendiyhy/Aphodius?label=versi%20terbaru&color=22C7EC&style=for-the-badge"></a>
+  <img alt="Total unduhan" src="https://img.shields.io/github/downloads/efendiyhy/Aphodius/total?label=total%20unduhan&color=F2A33A&style=for-the-badge">
+  <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white">
+</p>
 
-## Build
-CI GitHub Actions (`.github/workflows/build.yml`) membangun APK. Rilis dibuat otomatis dari `version.txt`.
+<p align="center">
+  <a href="https://github.com/efendiyhy/Aphodius/releases/latest"><b>⬇️ Unduh Aplikasi (APK)</b></a>
+</p>
 
-Rilis baru: naikkan angka di `version.txt` lalu push ke `main` — CI membuat tag dan rilis otomatis.
+---
 
-## Desain
-- Logo: kumbang tahi bergaya polygon (low-poly). Aset ada di `branding/`; dibangkitkan ulang dengan `python3 tools/branding/build.py` (perlu `fonttools`, dan `rsvg-convert` untuk PNG).
-- Mockup UI: `portrait/`, `landscape/`, `00-design-system.svg`; buka `preview.html` untuk melihat semuanya. Bangkitkan ulang dengan `python3 tools/branding/mockups.py`.
-- Warna utama Aqua `#22C7EC`, aksen emas scarab `#F2A33A`, latar `#050D16`. Detail ada di `00-design-system.svg`.
+## Apa itu Aphodius?
 
-## v1.6.0
-- Fitur Extraordinary (butuh password): film bergenre Extraordinary hanya tampil di menu sendiri yang menggantikan Daftarku, tidak bercampur dengan film lain.
-- Profil ditata ulang (Keamanan, Konten, Suara, Pemutar, Pembaruan) dan info developer di bagian paling bawah.
-- Judul kategori di Beranda (Lanjutkan Menonton, Rekomendasi untukmu, dll.) kini putih.
+Aphodius adalah aplikasi nonton untuk Android. Koleksi film dan series ditampilkan seperti aplikasi streaming pada umumnya: ada poster, sinopsis, rating, dan kategori. Cukup buka, pilih judul, lalu putar layar penuh.
 
-## v1.5.0
-- Fitur Bagikan dihapus.
-- Nama film tampil di bawah poster (dipotong dengan … bila terlalu panjang).
-- Movie dan Series dikelompokkan per Genre, Negara, atau Tahun.
-- Bagian Rekomendasi dan Populer di Beranda, Movie, dan Series.
-- Tab Series baru dengan daftar episode, lanjut menonton per episode, dan episode berikutnya otomatis.
-- Data baru: negara, rating, populer, rekomendasi, tipe (film/series), episodes.
+Daftar film **selalu diperbarui otomatis**. Judul baru yang ditambahkan akan muncul sendiri di aplikasimu, tanpa perlu memasang ulang.
 
-## v1.2.0
-- Nama sapaan saat pertama kali dipasang, profil lokal, dan kunci aplikasi (PIN 4 digit + sidik jari opsional).
-- Pemutar: crop manual (tombol Crop) — geser 4 garis, simpan, berlaku global; bisa dimatikan/dihapus (mati = video tampil apa adanya).
-- Menu bawah "Cari" diganti "Movie" (film dikelompokkan per genre); pencarian tetap ada lewat ikon di Beranda.
-- Pembaruan dalam aplikasi: banner info + unduh & pasang langsung dari rilis GitHub.
+## Fitur Utama
 
-## v1.2.1
-- Crop otomatis dihapus; diganti crop manual yang bisa disimpan dan dimatikan.
-- Sinopsis film dari web ditampilkan di halaman detail.
+### 🎬 Menjelajah dengan mudah
+- **Beranda** berisi sorotan film, *Lanjutkan Menonton*, *Rekomendasi untukmu*, *Populer*, dan *Baru Ditambah*.
+- **Movie dan Series** bisa dikelompokkan berdasarkan **genre, negara, atau tahun**.
+- **Pencarian** cepat berdasarkan judul, negara, tahun, atau genre.
+- Setiap poster dilengkapi **judul** di bawahnya, jadi mudah dikenali.
+- Halaman detail menampilkan **sinopsis, rating, negara, dan genre**.
 
-## v1.3.0
-- Desain baru penuh: logo kumbang tahi polygon, ikon launcher, UI baru di semua layar.
-- Fitur Adults (Profil): tombol on/off, butuh password; film bergenre `21+` hanya tampil bila Adults aktif. Mengaktifkan Adults mewajibkan kunci aplikasi (PIN) dan kunci tidak bisa dimatikan selama Adults menyala.
+### 📺 Series dan episode
+- Daftar episode lengkap dengan penanda progres.
+- **Lanjut dari episode terakhir** yang kamu tonton.
+- Selesai satu episode, episode berikutnya siap diputar.
 
-## v1.3.1
-- Sinkron data jauh lebih cepat: membaca lewat GitHub API (bukan raw yang ter-cache 5 menit), cek tiap 30 detik, dan langsung cek saat aplikasi dibuka kembali.
+### ▶️ Pemutar yang nyaman
+- Putar layar penuh, ketuk dua kali di kiri atau kanan untuk **mundur atau maju 10 detik**.
+- Geser di sisi kiri untuk **kecerahan** dan di sisi kanan untuk **volume**.
+- Pilih **kualitas** dan **kecepatan** putar.
+- **Crop video** untuk membuang bingkai hitam di tepi. Ada tombol **Auto** yang mengenalinya sendiri.
+- **Lanjut menonton** otomatis dari menit terakhir.
 
-## v1.4.0
-- Tombol "Buka di X" dihapus dari semua film.
-- Pengaturan Suara: Surround bioskop + equalizer 5 pita dengan preset.
-- Crop otomatis: tombol AUTO di editor crop mendeteksi bingkai hitam di tepi video.
-- Foto profil (ambil dari galeri).
-- Font Montserrat (gaya Netflix); sapaan di Beranda lebih besar dan kontras.
+### 🔊 Suara ala bioskop
+- **Surround bioskop** untuk suara yang terasa lebih luas.
+- **Equalizer** sederhana dengan beberapa pilihan siap pakai.
+
+### ⭐ Daftarku
+Simpan film yang ingin kamu tonton nanti dalam satu daftar pribadi.
+
+### 🔒 Privasi dan keamanan
+- **Kunci aplikasi** dengan PIN 4 digit, bisa ditambah **sidik jari**.
+- Profil pribadi: nama sapaan dan foto profil.
+- Konten tertentu disembunyikan secara bawaan dan baru tampil setelah kamu mengaktifkannya dengan sandi.
+
+### 🔄 Selalu terbaru
+Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam aplikasi.
+
+## Cara Memasang
+
+1. Buka halaman **[Rilis](https://github.com/efendiyhy/Aphodius/releases/latest)** lalu unduh file `.apk` terbaru.
+2. Buka file tersebut di HP Android. Jika diminta, izinkan *pasang dari sumber ini*.
+3. Buka Aphodius, isi nama sapaan, dan selamat menonton.
+
+> Butuh Android 8.0 atau lebih baru.
+
+## Statistik Unduhan
+
+<p align="center">
+  <img src="docs/downloads.svg" alt="Grafik unduhan Aphodius per versi" width="720">
+</p>
+
+## Riwayat Pembaruan
+
+<details open>
+<summary><b>v1.6.0</b> — Extraordinary dan profil baru</summary>
+
+- Menu **Extraordinary** yang dibuka dengan sandi. Isinya terpisah dan menggantikan Daftarku.
+- Profil ditata ulang lebih rapi, info developer ada di bagian bawah.
+- Judul kategori di Beranda kini berwarna putih agar jelas dibaca.
+</details>
+
+<details>
+<summary><b>v1.5.0</b> — Series, negara, dan rekomendasi</summary>
+
+- Tab **Series** dengan daftar episode.
+- Film dikelompokkan per genre, negara, atau tahun.
+- Bagian *Rekomendasi* dan *Populer*.
+- Judul film tampil di bawah poster. Tombol Bagikan dihapus.
+</details>
+
+<details>
+<summary><b>v1.4.0</b> — Suara dan personalisasi</summary>
+
+- Surround bioskop dan equalizer.
+- Crop otomatis, foto profil, dan font baru.
+</details>
+
+<details>
+<summary><b>v1.3.x</b> — Tampilan baru dan sinkron lebih cepat</summary>
+
+- Desain baru di semua layar dengan logo kumbang.
+- Fitur Adults dengan sandi dan kunci aplikasi.
+- Pembaruan daftar film jauh lebih cepat.
+</details>
+
+<details>
+<summary><b>v1.2.x dan sebelumnya</b></summary>
+
+- Nama sapaan, profil, dan kunci aplikasi PIN.
+- Crop manual, sinopsis film, dan pembaruan langsung dari dalam aplikasi.
+</details>
+
+## Untuk Developer
+
+Aplikasi dibangun dengan Kotlin dan Jetpack Compose. Rilis dibuat otomatis oleh GitHub Actions setiap kali `version.txt` dinaikkan di cabang `main`. Aset logo ada di `branding/`, mockup desain di `portrait/` dan `landscape/`.
+
+---
+
+<p align="center">Dibuat oleh <b>SengkuniDeveloper</b></p>
