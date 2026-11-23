@@ -232,8 +232,8 @@ class AppState(ctx: Context) {
         lockEnabled = true
     }
     fun checkPin(pin: String): Boolean = store.pinHash.isNotEmpty() && hashPin(store.pinSalt, pin) == store.pinHash
-    fun clearPin() { store.pinHash = ""; store.pinSalt = ""; lockEnabled = false; setBiometricPref(false); setAdults(false) }
-    fun setAdults(on: Boolean) { val v = on && lockEnabled; adults = v; store.adults = v }
+    fun clearPin() { store.pinHash = ""; store.pinSalt = ""; lockEnabled = false; setBiometricPref(false); enableAdults(false) }
+    fun enableAdults(on: Boolean) { val v = on && lockEnabled; adults = v; store.adults = v }
     /** Password fitur Adults = password web Master Stream (disimpan sebagai hash). */
     fun checkAdultsPassword(pw: String): Boolean =
         java.security.MessageDigest.getInstance("SHA-256").digest(pw.trim().toByteArray()).joinToString("") { "%02x".format(it) } == ADULTS_HASH

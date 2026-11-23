@@ -592,7 +592,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
                 AButton("AKTIFKAN", null, true, Modifier.fillMaxWidth()) {
                     if (!s.checkAdultsPassword(pw)) { pwErr = "Password salah" } else {
                         askPw = false; pw = ""; pwErr = ""
-                        if (s.lockEnabled) s.setAdults(true) else { wantAdults = true; err = ""; pinMode = "set1" }
+                        if (s.lockEnabled) s.enableAdults(true) else { wantAdults = true; err = ""; pinMode = "set1" }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -610,7 +610,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
                 PinPad(title, sub, err, resetTick = tick) { pin ->
                     when (pinMode) {
                         "set1" -> { firstPin = pin; err = ""; pinMode = "set2"; tick++ }
-                        "set2" -> if (pin == firstPin) { s.setPin(pin); if (wantAdults) { s.setAdults(true); wantAdults = false }; pinMode = null; err = "" } else { err = "PIN tidak sama, ulangi"; pinMode = "set1"; tick++ }
+                        "set2" -> if (pin == firstPin) { s.setPin(pin); if (wantAdults) { s.enableAdults(true); wantAdults = false }; pinMode = null; err = "" } else { err = "PIN tidak sama, ulangi"; pinMode = "set1"; tick++ }
                         else -> if (s.checkPin(pin)) { s.clearPin(); pinMode = null; err = "" } else { err = "PIN salah"; tick++ }
                     }
                 }
@@ -649,7 +649,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
         }
         SettingRow("Adults", if (s.adults) "Aktif — film 21+ ditampilkan" else "Mati — film 21+ disembunyikan", s.adults) {
             info = ""
-            if (s.adults) s.setAdults(false) else { pw = ""; pwErr = ""; askPw = true }
+            if (s.adults) s.enableAdults(false) else { pw = ""; pwErr = ""; askPw = true }
         }
         if (info.isNotEmpty()) Text(info, color = Color(0xFFFFB454), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         if (s.lockEnabled && biometricAvailable(ctx)) {
