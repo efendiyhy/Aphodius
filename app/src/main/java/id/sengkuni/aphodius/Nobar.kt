@@ -367,10 +367,13 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
     // ---------- suara ----------
     fun enableVoice() {
         if (voice != null) return
+        voiceError = ""
         voiceOn = true; micOn = true
-        val v = VoiceEngine(ctx, this)
-        voice = v
-        scope.launch { heartbeat(); v.start(members) }
+        try {
+            val v = VoiceEngine(ctx, this)
+            voice = v
+            scope.launch { heartbeat(); v.start(members) }
+        } catch (t: Throwable) { voiceFailed(t.message ?: t.javaClass.simpleName) }
     }
 
     fun toggleMic() {
@@ -378,6 +381,12 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
         micOn = !micOn
         voice?.setMic(micOn)
         scope.launch { heartbeat() }
+    }
+
+    var voiceError by mutableStateOf("")
+    internal fun voiceFailed(msg: String) {
+        voiceError = "Suara gagal: $msg"
+        voice = null; voiceOn = false; micOn = false
     }
 
     fun disableVoice() {
@@ -402,7 +411,12 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
     private val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var prevMode = AudioManager.MODE_NORMAL
     private var prevSpeaker = false
-    private var stopped = false
+    @Volatile private var stopped = false
+
+    private fun post(block: () -> Unit) {
+        if (rtc.isShutdown) return
+        try { rtc.execute { try { block() } catch (_: Throwable) { } } } catch (_: Throwable) { }
+    }
 
     private open class Sdp : SdpObserver {
         override fun onCreateSuccess(d: SessionDescription?) {}
@@ -417,7 +431,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
     )
 
     fun start(current: List<NbMember>) {
-        rtc.execute {
+        post {
             runCatching {
                 if (!inited) {
                     PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(ctx).createInitializationOptions())
@@ -438,7 +452,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
                 am.mode = AudioManager.MODE_IN_COMMUNICATION
                 am.isSpeakerphoneOn = !hasHeadset()
                 current.filter { it.uid != room.me && it.voice }.forEach { connect(it.uid) }
-            }.onFailure { room.peerState["_"] = "gagal" }
+            }.onFailure { room.voiceFailed(it.message ?: it.javaClass.simpleName) }
         }
     }
 
@@ -447,7 +461,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
             it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || it.type == AudioDeviceInfo.TYPE_USB_HEADSET
     }
 
-    fun setMic(on: Boolean) { rtc.execute { track?.setEnabled(on) } }
+    fun setMic(on: Boolean) { post { track?.setEnabled(on) } }
 
     private fun newPc(uid: String): PeerConnection? {
         val f = factory ?: return null
@@ -464,8 +478,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
             override fun onIceGatheringChange(s: PeerConnection.IceGatheringState?) {}
             override fun onIceCandidate(c: IceCandidate?) {
                 if (c == null) return
-                val o = JSONObject().put("mid", c.sdpMid).put("idx", c.sdpMLineIndex).put("c", c.sdp)
-                room.sendSig(uid, "ice", o.toString())
+                try { room.sendSig(uid, "ice", JSONObject().put("mid", c.sdpMid).put("idx", c.sdpMLineIndex).put("c", c.sdp).toString()) } catch (_: Throwable) { }
             }
             override fun onIceCandidatesRemoved(c: Array<out IceCandidate>?) {}
             override fun onAddStream(s: MediaStream?) {}
@@ -494,14 +507,13 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
         pc.createOffer(object : Sdp() {
             override fun onCreateSuccess(d: SessionDescription?) {
                 if (d == null) return
-                pc.setLocalDescription(Sdp(), d)
-                room.sendSig(uid, "offer", d.description)
+                try { pc.setLocalDescription(Sdp(), d); room.sendSig(uid, "offer", d.description) } catch (_: Throwable) { }
             }
         }, mc)
     }
 
     fun onSignal(from: String, type: String, data: String) {
-        rtc.execute {
+        post {
             if (stopped || track == null || from == room.me) return@execute
             runCatching {
                 when (type) {
@@ -512,13 +524,12 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
                         val pc = newPc(from) ?: return@execute
                         pc.setRemoteDescription(object : Sdp() {
                             override fun onSetSuccess() {
-                                rtc.execute {
+                                post {
                                     remoteSet.add(from); flush(from, pc)
                                     pc.createAnswer(object : Sdp() {
                                         override fun onCreateSuccess(d: SessionDescription?) {
                                             if (d == null) return
-                                            pc.setLocalDescription(Sdp(), d)
-                                            room.sendSig(from, "answer", d.description)
+                                            try { pc.setLocalDescription(Sdp(), d); room.sendSig(from, "answer", d.description) } catch (_: Throwable) { }
                                         }
                                     }, MediaConstraints())
                                 }
@@ -528,7 +539,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
                     "answer" -> {
                         val pc = peers[from] ?: return@execute
                         pc.setRemoteDescription(object : Sdp() {
-                            override fun onSetSuccess() { rtc.execute { remoteSet.add(from); flush(from, pc) } }
+                            override fun onSetSuccess() { post { remoteSet.add(from); flush(from, pc) } }
                         }, SessionDescription(SessionDescription.Type.ANSWER, data))
                     }
                     "ice" -> {
@@ -550,7 +561,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
 
     /** Tutup koneksi ke anggota yang sudah keluar atau mematikan suara. */
     fun sync(members: List<NbMember>) {
-        rtc.execute {
+        post {
             if (stopped) return@execute
             val live = members.filter { it.voice && it.uid != room.me }.map { it.uid }.toSet()
             peers.keys.filter { it !in live }.forEach { k ->
@@ -561,7 +572,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
 
     fun stop() {
         stopped = true
-        rtc.execute {
+        post {
             runCatching { peers.values.forEach { it.close() }; peers.clear() }
             runCatching { track?.dispose() }
             runCatching { source?.dispose() }

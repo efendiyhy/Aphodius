@@ -95,6 +95,7 @@ fun RoomPanel(room: NobarRoom, modifier: Modifier = Modifier, showChatBox: Boole
                 }
             }
         }
+        if (room.voiceError.isNotEmpty()) Text(room.voiceError, color = Color(0xFFFF8A80), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
         Spacer(Modifier.height(8.dp))
         room.members.forEach { m ->
             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
