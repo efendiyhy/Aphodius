@@ -27,6 +27,7 @@ sealed interface Route {
     data class Play(val id: String, val ep: Int = -1) : Route
     data object Search : Route
     data object Profile : Route
+    data class Nobar(val filmId: String? = null) : Route
 }
 
 class MainActivity : FragmentActivity() {
@@ -108,21 +109,22 @@ fun App(s: AppState) {
                     val idx = pool.indexOfFirst { it.id == f.id }
                     val next = if (pool.size > 1) pool[(idx + 1) % pool.size].takeIf { !it.isSeries } else null
                     key(f.id) {
-                        PlayerScreen(f, next, s, onBack = { stack = stack.dropLast(1) }, onNext = { n -> stack = stack.dropLast(1) + Route.Play(n.id) })
+                        PlayerScreen(f, next, s, onBack = { stack = stack.dropLast(1) }, onNext = { n -> stack = stack.dropLast(1) + Route.Play(n.id) }, room = s.nobar.room)
                     }
                 }
             }
             is Route.Detail -> {
                 val f = s.find(top.id)
-                if (f == null) { stack = stack.dropLast(1) } else DetailScreen(f, s, onBack = { stack = stack.dropLast(1) }, onPlay = { play(f) }, onPlayEp = { i -> stack = stack + Route.Play(f.id, i) })
+                if (f == null) { stack = stack.dropLast(1) } else DetailScreen(f, s, onBack = { stack = stack.dropLast(1) }, onPlay = { play(f) }, onPlayEp = { i -> stack = stack + Route.Play(f.id, i) }, onNobar = { stack = stack + Route.Nobar(f.id) })
             }
             Route.Search -> SearchScreen(s, onBack = { stack = stack.dropLast(1) }, onOpen = ::open, onPlay = ::play)
             Route.Profile -> ProfileScreen(s, onBack = { stack = stack.dropLast(1) })
+            is Route.Nobar -> NobarScreen(s, top.filmId, onBack = { stack = stack.dropLast(1) }, onWatch = { f -> stack = stack + Route.Play(f.id) })
             null -> Column(Modifier.fillMaxSize()) {
                 s.update?.let { u -> UpdateBanner(u) { stack = stack + Route.Profile } }
                 Box(Modifier.weight(1f)) {
                     when (if (tab == Tab.MyList || tab == Tab.Extra) (if (s.extra) Tab.Extra else Tab.MyList) else tab) {
-                        Tab.Home -> HomeScreen(s, ::open, ::play, onSearch = { stack = stack + Route.Search }, onProfile = { stack = stack + Route.Profile })
+                        Tab.Home -> HomeScreen(s, ::open, ::play, onSearch = { stack = stack + Route.Search }, onProfile = { stack = stack + Route.Profile }, onNobar = { stack = stack + Route.Nobar() })
                         Tab.New -> NewScreen(s, ::open, ::play)
                         Tab.Movie -> BrowseScreen(s, false, ::open)
                         Tab.Series -> BrowseScreen(s, true, ::open)

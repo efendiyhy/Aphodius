@@ -84,6 +84,16 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 </details>
 
 <details>
+<summary><b>v1.7.0</b> — Nonton bareng (Nobar)</summary>
+
+- Buat ruangan dari halaman film, bagikan kode 6 karakter, maksimal 4 orang.
+- Putar, jeda, dan geser waktu tersinkron untuk semua anggota. Host bisa mengizinkan semua orang ikut mengendalikan.
+- Chat dan suara langsung (tekan tombol mikrofon sendiri). Surround bioskop dimatikan sementara saat suara aktif.
+- Film dewasa dan Extraordinary tetap bisa dinobarkan; anggota perlu fitur itu aktif di profilnya.
+- Nobar untuk series belum tersedia.
+</details>
+
+<details>
 <summary><b>v1.5.0</b> — Series, negara, dan rekomendasi</summary>
 
 - Tab **Series** dengan daftar episode.

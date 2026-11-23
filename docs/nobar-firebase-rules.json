@@ -1,0 +1,47 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "roomIdx": {
+      ".indexOn": ".value",
+      ".read": "auth != null",
+      "$code": {
+        ".write": "auth != null",
+        ".validate": "newData.isNumber()"
+      }
+    },
+    "rooms": {
+      "$code": {
+        ".read": "auth != null && data.child('members').child(auth.uid).exists()",
+        "info": {
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() && newData.child('host').val() === auth.uid || data.child('host').val() === auth.uid || data.child('created').val() < now - 86400000)"
+        },
+        "pb": {
+          ".write": "auth != null && data.parent().child('members').child(auth.uid).exists() && (data.parent().child('info/ctl').val() === 'all' || data.parent().child('info/host').val() === auth.uid)"
+        },
+        "members": {
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || data.parent().parent().child('info/host').val() === auth.uid || data.child('seen').val() < now - 60000)",
+            ".validate": "!newData.exists() || (newData.child('name').isString() && newData.child('name').val().length <= 30 && newData.child('seen').isNumber())"
+          },
+          ".read": "auth != null"
+        },
+        "chat": {
+          "$id": {
+            ".write": "auth != null && data.parent().parent().child('members').child(auth.uid).exists() && newData.child('u').val() === auth.uid",
+            ".validate": "newData.child('m').isString() && newData.child('m').val().length <= 300"
+          }
+        },
+        "sig": {
+          "$to": {
+            "$id": {
+              ".write": "auth != null && (data.parent().parent().parent().child('members').child(auth.uid).exists() || auth.uid === $to)"
+            }
+          }
+        },
+        ".write": "auth != null && (!data.exists() || data.child('info/created').val() < now - 86400000 || data.child('info/host').val() === auth.uid)"
+      }
+    }
+  }
+}

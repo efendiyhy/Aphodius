@@ -232,7 +232,7 @@ fun EmptyState(s: AppState, text: String) {
 
 /* ---------------- BERANDA ---------------- */
 @Composable
-fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSearch: () -> Unit, onProfile: () -> Unit) {
+fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSearch: () -> Unit, onProfile: () -> Unit, onNobar: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     var picked by remember { mutableStateOf<String?>(null) }
     val land = LocalConfiguration.current.screenWidthDp > 600
@@ -248,6 +248,8 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
                     Wordmark(13.dp)
                 }
                 IconBtn(Ic.Refresh, "Muat ulang", { scope.launch { s.refresh() } }, tint = if (s.refreshing) C.Aqua else Color.White)
+                Spacer(Modifier.width(8.dp))
+                IconBtn(Ic.People, "Nobar", onNobar)
                 Spacer(Modifier.width(8.dp))
                 IconBtn(Ic.Search, "Cari", onSearch)
                 Spacer(Modifier.width(8.dp))
@@ -474,7 +476,7 @@ fun MyListScreen(s: AppState, onOpen: (Film) -> Unit) {
 
 /* ---------------- DETAIL ---------------- */
 @Composable
-fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit, onPlayEp: (Int) -> Unit = {}) {
+fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit, onPlayEp: (Int) -> Unit = {}, onNobar: () -> Unit = {}) {
     val ctx = LocalContext.current
     val fav = f.id in s.favs
     val prog = s.lastProg(f)
@@ -521,6 +523,7 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit, o
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ActionTile(if (fav) Ic.Check else Ic.Plus, if (fav) "Di Daftarku" else "Daftarku", Modifier.weight(1f)) { s.toggleFav(f.id) }
+                if (!f.isSeries) ActionTile(Ic.People, "Nobar", Modifier.weight(1f)) { onNobar() }
             }
             if (f.isSeries && f.episodes.isNotEmpty()) {
                 SectionTitle("Episode (${f.episodes.size})")

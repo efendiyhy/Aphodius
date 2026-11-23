@@ -202,6 +202,7 @@ class Store(ctx: Context) {
 
 class AppState(ctx: Context) {
     val store = Store(ctx)
+    val nobar = Nobar(ctx)
     var allFilms by mutableStateOf<List<Film>>(emptyList())
     var surround by mutableStateOf(store.surround)
     var eq by mutableStateOf(store.eq)

@@ -85,7 +85,7 @@ private val resizeModes = listOf(
 private val speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
 
 @Composable
-fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNext: (Film) -> Unit) {
+fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNext: (Film) -> Unit, room: NobarRoom? = null) {
     val ctx = LocalContext.current
     val activity = remember { ctx.findActivity() }
     val audio = remember { ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
@@ -117,7 +117,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         player.addListener(al)
         onDispose { player.removeListener(al); fx.release() }
     }
-    LaunchedEffect(s.surround, s.eq) { fx.apply(s.surround, s.eq) }
+    LaunchedEffect(s.surround, s.eq, room?.voiceOn) { fx.apply(s.surround && room?.voiceOn != true, s.eq) }
     var phase by remember { mutableIntStateOf(0) } // 0 memuat, 1 siap, 2 galat
     var error by remember { mutableStateOf("") }
     var attempt by remember { mutableIntStateOf(0) }
@@ -140,21 +140,39 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     fun startPlay(v: VideoVariant, seek: Long) {
         player.setMediaItem(MediaItem.fromUri(Uri.parse(v.url)))
         player.prepare()
-        if (seek > 0) player.seekTo(seek)
-        player.setPlaybackSpeed(s.speed)
-        player.playWhenReady = true
+        if (room != null) {
+            val e = room.expected()
+            if (e > 0) player.seekTo(e)
+            player.setPlaybackSpeed(1f)
+            player.playWhenReady = room.pb.playing
+        } else {
+            if (seek > 0) player.seekTo(seek)
+            player.setPlaybackSpeed(s.speed)
+            player.playWhenReady = true
+        }
+    }
+
+    /** Di mode nobar: hanya yang berhak mengendalikan; hasilnya disiarkan ke semua anggota. */
+    fun allowed(): Boolean {
+        if (room == null || room.canControl()) return true
+        hud = "Hanya host yang bisa mengatur"
+        return false
     }
 
     fun seekBy(ms: Long) {
+        if (!allowed()) return
         val d = player.duration
         val max = if (d > 0) d else Long.MAX_VALUE
         player.seekTo((player.currentPosition + ms).coerceIn(0L, max))
+        room?.publish(player.playWhenReady, player.currentPosition)
         hud = if (ms > 0) "+${ms / 1000} dtk" else "−${-ms / 1000} dtk"
     }
 
     fun togglePlay() {
+        if (!allowed()) return
         if (ended) { player.seekTo(0); player.play() }
-        else if (player.isPlaying) player.pause() else player.play()
+        else if (player.playWhenReady) player.pause() else player.play()
+        room?.publish(player.playWhenReady, player.currentPosition)
     }
 
     DisposableEffect(player) {
@@ -187,7 +205,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
             val pick = chooseVariant(v, s.quality)
             curVar = pick
             val pr = s.progress[film.id]
-            val seek = if (pr != null && pr.frac in 0.02f..0.95f) (pr.pos - 2000).coerceAtLeast(0) else 0L
+            val seek = if (room == null && pr != null && pr.frac in 0.02f..0.95f) (pr.pos - 2000).coerceAtLeast(0) else 0L
             if (pick != null) { startPlay(pick, seek); phase = 1 } else { error = "Video tidak ditemukan."; phase = 2 }
         }.onFailure { error = it.message ?: "Gagal memuat video."; phase = 2 }
     }
@@ -208,6 +226,32 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         if (controls && isPlaying && panel == null && !dragging && phase == 1) { delay(3500); controls = false }
     }
     LaunchedEffect(hud) { if (hud != null) { delay(900); hud = null } }
+
+    // Sinkron nobar: ikuti keadaan ruangan + koreksi selisih waktu berkala
+    if (room != null) {
+        val lc = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(room.pb.stamp, room.pb.playing, phase) {
+            if (phase != 1 || room.pb.by == room.me) return@LaunchedEffect
+            val e = room.expected()
+            if (kotlin.math.abs(player.currentPosition - e) > 1200) player.seekTo(e)
+            player.playWhenReady = room.pb.playing
+        }
+        LaunchedEffect(phase) {
+            while (phase == 1) {
+                delay(2500)
+                if (!lc.currentState.isAtLeast(Lifecycle.State.RESUMED)) continue
+                if (room.pb.playing) {
+                    val e = room.expected()
+                    if (!player.playWhenReady) player.playWhenReady = true
+                    if (player.playbackState == Player.STATE_READY && kotlin.math.abs(player.currentPosition - e) > 2500) player.seekTo(e)
+                } else if (player.playWhenReady) {
+                    player.playWhenReady = false
+                    if (kotlin.math.abs(player.currentPosition - room.pb.pos) > 800) player.seekTo(room.pb.pos)
+                }
+            }
+        }
+        LaunchedEffect(room.status) { if (room.status == "closed") onBack() }
+    }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
@@ -366,7 +410,10 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                     Slider(
                         value = if (dragging) dragFrac else if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f,
                         onValueChange = { dragging = true; dragFrac = it },
-                        onValueChangeFinished = { if (dur > 0) player.seekTo((dragFrac * dur).toLong()); dragging = false },
+                        onValueChangeFinished = {
+                            if (dur > 0 && allowed()) { player.seekTo((dragFrac * dur).toLong()); room?.publish(player.playWhenReady, player.currentPosition) }
+                            dragging = false
+                        },
                         colors = SliderDefaults.colors(thumbColor = C.Aqua, activeTrackColor = C.Aqua, inactiveTrackColor = Color.White.copy(alpha = .28f)),
                         modifier = Modifier.fillMaxWidth().height(28.dp),
                     )
@@ -375,7 +422,8 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                         BarButton(Ic.Quality, "Kualitas · " + (if (s.quality == 0) "Otomatis" else "${s.quality}p")) { panel = "quality" }
                         BarButton(Ic.Speed, "Kecepatan · ${fmtSpeed(s.speed)}") { panel = "speed" }
                         BarButton(Ic.Crop, "Crop · " + (if (s.cropOn && s.hasCrop) "Aktif" else "Mati")) { panel = "crop" }
-                        if (next != null) BarButton(Ic.Next, "Berikutnya") { onNext(next) }
+                        if (room != null) BarButton(if (room.voiceOn && room.micOn) Ic.Mic else Ic.People, "Nobar · ${room.members.size}") { panel = "nobar" }
+                        else if (next != null) BarButton(Ic.Next, "Berikutnya") { onNext(next) }
                     }
                 }
             }
@@ -385,10 +433,14 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         if (panel != null && phase == 1) {
             Column(
                 Modifier.align(Alignment.CenterEnd).statusBarsPadding().navigationBarsPadding().padding(end = 24.dp)
-                    .width(280.dp).clip(RoundedCornerShape(20.dp)).background(C.Surface.copy(alpha = .97f)).border(1.dp, C.Outline, RoundedCornerShape(20.dp)).padding(vertical = 8.dp)
+                    .width(if (panel == "nobar") 340.dp else 280.dp).clip(RoundedCornerShape(20.dp)).background(C.Surface.copy(alpha = .97f)).border(1.dp, C.Outline, RoundedCornerShape(20.dp)).padding(vertical = 8.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
                 when (panel) {
+                    "nobar" -> if (room != null) {
+                        PanelTitle("Nonton bareng · ${room.code}")
+                        RoomPanel(room, Modifier.padding(horizontal = 14.dp).height(300.dp))
+                    }
                     "quality" -> {
                         PanelTitle("Kualitas video")
                         PanelItem("Otomatis (terbaik)", s.quality == 0) { s.setQualityPref(0); applyQuality(variants, 0, curVar, player) { curVar = it; startPlay(it, player.currentPosition) }; panel = null }

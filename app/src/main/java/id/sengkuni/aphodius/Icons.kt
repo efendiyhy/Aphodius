@@ -42,6 +42,12 @@ object Ic {
     val Eps by lazy { stroke("eps", "M4 4h16v16H4zM9 8l7 4-7 4z") }
     val Rewind by lazy { stroke("rewind", "M4 12a8 8 0 1 0 3-6.2M4 3v5h5") }
     val Forward by lazy { stroke("forward", "M20 12a8 8 0 1 1-3-6.2M20 3v5h-5") }
+    val Mic by lazy { stroke("mic", "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3") }
+    val MicOff by lazy { stroke("micoff", "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M3 3l18 18") }
+    val Chat by lazy { stroke("chat", "M4 5h16v11H9l-5 4z") }
+    val People by lazy { stroke("people", "M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20c0-3 3-5 6-5s6 2 6 5M14 15c4 0 8 1 8 5") }
+    val Copy by lazy { stroke("copy", "M9 9h11v11H9zM5 15V4h11") }
+    val Send by lazy { stroke("send", "M3 11l18-8-8 18-2-8z") }
     val Star by lazy { stroke("star", "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z") }
     val Bookmark by lazy { stroke("bookmark", "M6 3h12v18l-6-4-6 4z") }
     val Speed by lazy { stroke("speed", "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2") }

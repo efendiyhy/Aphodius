@@ -16,6 +16,7 @@ android {
         targetSdk = 34
         versionCode = vCode
         versionName = vName
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     signingConfigs {
@@ -61,4 +62,5 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.3.1")
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("androidx.biometric:biometric:1.1.0")
+    implementation("io.github.webrtc-sdk:android:144.7559.15")
 }
