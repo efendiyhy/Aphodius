@@ -579,7 +579,7 @@ fun BrowseScreen(s: AppState, series: Boolean, onOpen: (Film) -> Unit) {
     val groups: List<Pair<String, List<Film>>> = remember(base, mode) {
         when (mode) {
             "Negara" -> base.groupBy { it.country.ifBlank { "Lainnya" } }.toList().sortedWith(compareBy({ it.first == "Lainnya" }, { -it.second.size }))
-            "Tahun" -> base.groupBy { it.year?.toString() ?: "Tanpa tahun" }.toList().sortedWith(compareBy({ it.first == "Tanpa tahun" }, { it.first }.let { c -> { p: Pair<String, List<Film>> -> -(p.first.toIntOrNull() ?: 0) } }))
+            "Tahun" -> base.groupBy { it.year?.toString() ?: "Tanpa tahun" }.toList().sortedWith(compareBy<Pair<String, List<Film>>>({ it.first == "Tanpa tahun" }, { -(it.first.toIntOrNull() ?: 0) }))
             else -> base.flatMap { f -> if (f.genres.isEmpty()) listOf("Lainnya" to f) else f.genres.map { it to f } }
                 .groupBy({ it.first }, { it.second }).toList().sortedWith(compareBy({ it.first == "Lainnya" }, { it.first }))
         }
