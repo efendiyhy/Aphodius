@@ -391,7 +391,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         }
 
         // Kontrol pemutar
-        AnimatedVisibility(visible = controls && phase == 1, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
+        this@Box.AnimatedVisibility(visible = controls && phase == 1, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = .70f), 0.30f to Color.Black.copy(alpha = .25f), 0.65f to Color.Black.copy(alpha = .25f), 1f to Color.Black.copy(alpha = .80f)))) {
                 Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconBtn(Ic.Back, "Kembali", onBack, glass = true)
