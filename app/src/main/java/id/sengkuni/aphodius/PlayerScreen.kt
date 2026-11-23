@@ -89,6 +89,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     val ctx = LocalContext.current
     val activity = remember { ctx.findActivity() }
     val audio = remember { ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val scope = rememberCoroutineScope()
 
     // Landscape + layar penuh selama memutar
     DisposableEffect(Unit) {
@@ -392,6 +393,18 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                 Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconBtn(Ic.Back, "Kembali", onBack, glass = true)
                     Text(film.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
+                    if (room != null || s.find(film.id) != null) {
+                        IconBtn(if (room != null) Ic.People else Ic.People, "Nobar", {
+                            if (room != null) panel = "nobar"
+                            else if (!s.nobar.busy) scope.launch {
+                                s.nobar.create(film) { s.nickname }
+                                val r = s.nobar.room
+                                if (r != null) { r.publish(player.playWhenReady, player.currentPosition); panel = "nobar" }
+                                else hud = s.nobar.error.ifBlank { "Gagal membuat ruangan" }
+                            }
+                        }, glass = true)
+                        Spacer(Modifier.width(8.dp))
+                    }
                     IconBtn(Ic.Aspect, "Rasio layar", { resize = (resize + 1) % resizeModes.size; hud = resizeModes[resize].second }, glass = true)
                 }
                 Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(36.dp), verticalAlignment = Alignment.CenterVertically) {
