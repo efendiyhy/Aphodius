@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -160,7 +162,9 @@ fun NobarScreen(s: AppState, filmId: String?, onBack: () -> Unit, onWatch: (Film
     val nb = s.nobar
     val room = nb.room
     val scope = rememberCoroutineScope()
-    val film = filmId?.let { s.find(it) }
+    var pickId by remember { mutableStateOf(filmId) }
+    var query by remember { mutableStateOf("") }
+    val film = pickId?.let { s.find(it) }
     var code by remember { mutableStateOf("") }
     val clip = LocalClipboardManager.current
 
@@ -177,31 +181,43 @@ fun NobarScreen(s: AppState, filmId: String?, onBack: () -> Unit, onWatch: (Film
         Spacer(Modifier.height(16.dp))
 
         if (room == null) {
-            if (film != null) {
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.Surface).border(1.dp, C.Outline, RoundedCornerShape(16.dp)).padding(16.dp)) {
-                    Text("Buat ruangan", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(film.name, color = C.Aqua, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp, bottom = 4.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("Kamu jadi host. Bagikan kode ke teman (maks $MAX_MEMBERS orang termasuk kamu).", color = C.Muted, fontSize = 12.sp)
-                    Spacer(Modifier.height(12.dp))
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.Surface).border(1.dp, C.Outline, RoundedCornerShape(16.dp)).padding(16.dp)) {
+                Text("Buat ruangan", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Kamu jadi host. Bagikan kode ke teman (maks $MAX_MEMBERS orang termasuk kamu).", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
+                if (film != null) {
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.SurfaceHigh).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(film.name, color = C.Aqua, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Text("Ganti", color = C.Muted, fontSize = 12.sp, modifier = Modifier.clickable { pickId = null }.padding(start = 8.dp))
+                    }
+                    Spacer(Modifier.height(10.dp))
                     AButton(if (nb.busy) "MEMBUAT…" else "BUAT RUANGAN", Ic.People, true, Modifier.fillMaxWidth()) {
                         if (!nb.busy) scope.launch { nb.create(film) { s.nickname } }
                     }
+                } else {
+                    TextInput(query, { query = it }, "Cari film untuk ditonton bareng…")
+                    val found = (s.films + s.extraFilms).filter { !it.isSeries && (query.isBlank() || it.name.contains(query, true)) }.take(6)
+                    found.forEach { m ->
+                        Text(m.name, color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.fillMaxWidth().clickable { pickId = m.id }.padding(vertical = 10.dp, horizontal = 4.dp))
+                    }
                 }
-                Spacer(Modifier.height(14.dp))
             }
+            Spacer(Modifier.height(14.dp))
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.Surface).border(1.dp, C.Outline, RoundedCornerShape(16.dp)).padding(16.dp)) {
                 Text("Gabung dengan kode", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                if (film == null) Text("Mau membuat ruangan? Buka film lalu pilih Nobar.", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                Text("Punya kode dari teman? Masukkan di sini.", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
                 Spacer(Modifier.height(10.dp))
                 TextInput(code, { code = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(6) }, "Kode 6 karakter", caps = true,
                     onDone = { if (!nb.busy) scope.launch { nb.join(code) { s.nickname } } })
                 Spacer(Modifier.height(10.dp))
-                AButton(if (nb.busy) "MENYAMBUNG…" else "GABUNG", null, film == null, Modifier.fillMaxWidth()) {
+                AButton(if (nb.busy) "MENYAMBUNG…" else "GABUNG", null, false, Modifier.fillMaxWidth()) {
                     if (!nb.busy) scope.launch { nb.join(code) { s.nickname } }
                 }
             }
             if (nb.busy) Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.Aqua, modifier = Modifier.size(24.dp)) }
             if (nb.error.isNotEmpty()) Text(nb.error, color = Color(0xFFFF8A80), fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
+            }
             return@Column
         }
 
