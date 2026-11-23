@@ -29,6 +29,7 @@ sealed interface Route {
     data object Search : Route
     data object Profile : Route
     data class Nobar(val filmId: String? = null) : Route
+    data object History : Route
 }
 
 class MainActivity : FragmentActivity() {
@@ -41,7 +42,7 @@ class MainActivity : FragmentActivity() {
         CrashLog.install(applicationContext)
         val state = AppState(applicationContext)
         state.crashInfo = CrashLog.take(applicationContext)
-        setContent { AphodiusTheme { App(state) } }
+        setContent { AphodiusTheme { androidx.compose.runtime.CompositionLocalProvider(LocalApp provides state) { App(state) } } }
     }
 }
 
@@ -128,16 +129,18 @@ fun App(s: AppState) {
                 if (f == null) { stack = stack.dropLast(1) } else DetailScreen(f, s, onBack = { stack = stack.dropLast(1) }, onPlay = { play(f) }, onPlayEp = { i -> stack = stack + Route.Play(f.id, i) }, onNobar = { stack = stack + Route.Nobar(f.id) })
             }
             Route.Search -> SearchScreen(s, onBack = { stack = stack.dropLast(1) }, onOpen = ::open, onPlay = ::play)
-            Route.Profile -> ProfileScreen(s, onBack = { stack = stack.dropLast(1) })
+            Route.Profile -> ProfileScreen(s, onBack = { stack = stack.dropLast(1) }, onHistory = { stack = stack + Route.History })
+            Route.History -> HistoryScreen(s, onBack = { stack = stack.dropLast(1) }, onOpen = ::open)
             is Route.Nobar -> NobarScreen(s, top.filmId, onBack = { stack = stack.dropLast(1) }, onWatch = { f -> stack = stack + Route.Play(f.id) })
             null -> Column(Modifier.fillMaxSize()) {
+                if (s.netError && s.films.isNotEmpty()) OfflineBanner()
                 s.update?.let { u -> UpdateBanner(u) { stack = stack + Route.Profile } }
                 Box(Modifier.weight(1f)) {
                     when (if (tab == Tab.MyList || tab == Tab.Extra) (if (s.extra) Tab.Extra else Tab.MyList) else tab) {
                         Tab.Home -> HomeScreen(s, ::open, ::play, onSearch = { stack = stack + Route.Search }, onProfile = { stack = stack + Route.Profile }, onNobar = { stack = stack + Route.Nobar() })
                         Tab.New -> NewScreen(s, ::open, ::play)
-                        Tab.Movie -> BrowseScreen(s, false, ::open)
-                        Tab.Series -> BrowseScreen(s, true, ::open)
+                        Tab.Movie -> BrowseScreen(s, false, ::open, onSearch = { stack = stack + Route.Search })
+                        Tab.Series -> BrowseScreen(s, true, ::open, onSearch = { stack = stack + Route.Search })
                         Tab.MyList -> MyListScreen(s, ::open)
                         Tab.Extra -> ExtraScreen(s, ::open)
                     }

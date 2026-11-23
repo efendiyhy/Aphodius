@@ -164,6 +164,9 @@ class Store(ctx: Context) {
     var pinHash: String
         get() = sp.getString("pinHash", "") ?: ""
         set(v) { sp.edit().putString("pinHash", v).apply() }
+    var hiddenCont: Set<String>
+        get() = sp.getStringSet("hiddenCont", emptySet()) ?: emptySet()
+        set(v) { sp.edit().putStringSet("hiddenCont", v).apply() }
     var skipSec: Int
         get() = sp.getInt("skipSec", 10)
         set(v) { sp.edit().putInt("skipSec", v).apply() }
@@ -223,6 +226,9 @@ class AppState(ctx: Context) {
     var surround by mutableStateOf(store.surround)
     var floatChat by mutableStateOf(store.floatChat)
     var skipSec by mutableStateOf(store.skipSec)
+    var hiddenCont by mutableStateOf(store.hiddenCont)
+    /** Catatan singkat hasil muat ulang ("3 film baru"), hilang sendiri di Beranda. */
+    var refreshNote by mutableStateOf("")
     var mobileQuality by mutableStateOf(store.mobileQuality)
     var hintSeen by mutableStateOf(store.hintSeen)
     var thumbPoster by mutableStateOf(store.thumbPoster.also { Thumbs.enabled = it })
@@ -272,7 +278,12 @@ class AppState(ctx: Context) {
 
     private fun apply(text: String): Boolean = try {
         val (f, g) = parseFilms(text)
+        val before = allFilms.map { it.id }.toSet()
         allFilms = f.sortedByDescending { it.added }
+        if (before.isNotEmpty()) {
+            val n = allFilms.count { it.id !in before }
+            if (n > 0) refreshNote = "$n film baru masuk"
+        }
         genres = g
         loaded = true
         true
@@ -333,6 +344,7 @@ class AppState(ctx: Context) {
     fun saveProgress(id: String, pos: Long, dur: Long) {
         if (dur <= 0) return
         progress[id] = Prog(pos, dur, System.currentTimeMillis())
+        if (hiddenCont.isNotEmpty()) { val base = id.substringBefore('#'); if (base in hiddenCont) { hiddenCont = hiddenCont - base; store.hiddenCont = hiddenCont } }
         store.saveProgress(progress.toMap())
     }
 
@@ -340,6 +352,13 @@ class AppState(ctx: Context) {
     fun setSpeedPref(s: Float) { speed = s; store.speed = s }
     val hasCrop: Boolean get() = crop.any { it > 0.001f }
     fun useCrop(b: Boolean) { cropOn = b; store.cropOn = b }
+    /** Sembunyikan dari "Lanjutkan Menonton" tanpa menghapus riwayat. */
+    fun hideFromContinue(f: Film) { hiddenCont = hiddenCont + f.id; store.hiddenCont = hiddenCont }
+    fun removeHistory(key: String) { progress.remove(key); store.saveProgress(progress.toMap()) }
+    fun clearHistory() { progress.clear(); store.saveProgress(emptyMap()) }
+    /** Dipakai item 1 (jeda tenggang PIN): tandai bahwa aplikasi sengaja membuka aplikasi lain. */
+    var graceUntil = 0L
+    fun suppressLock() { graceUntil = System.currentTimeMillis() + 60_000L }
     fun updateSkip(v: Int) { skipSec = v; store.skipSec = v }
     fun updateMobileQuality(v: Int) { mobileQuality = v; store.mobileQuality = v }
     fun markHintSeen() { hintSeen = true; store.hintSeen = true }

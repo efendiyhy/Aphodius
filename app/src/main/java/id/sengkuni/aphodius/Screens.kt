@@ -9,6 +9,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -65,12 +68,77 @@ fun meta(f: Film): String = listOfNotNull(f.year?.toString(), f.country.takeIf {
 
 val Film.kind: String get() = if (isSeries) "Series" else "Film"
 
+
+/* ---------------- Util tambahan ---------------- */
+val LocalApp = compositionLocalOf<AppState?> { null }
+
+/** Lencana "Selesai" untuk film yang sudah ditonton (95% atau lebih). */
+@Composable
+fun BoxScope.DoneBadge(f: Film) {
+    val s = LocalApp.current ?: return
+    if (f.isSeries) return
+    if ((s.progress[f.id]?.frac ?: 0f) > 0.95f) {
+        Text(
+            "Selesai", color = C.OnAqua, fontSize = 10.sp, fontWeight = FontWeight.Black,
+            modifier = Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(50)).background(C.Aqua).padding(horizontal = 8.dp, vertical = 3.dp),
+        )
+    }
+}
+
+/** Kolom cari di bagian atas layar: ketuk untuk membuka pencarian. */
+@Composable
+fun SearchBarEntry(hint: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = 16.dp).height(48.dp).clip(RoundedCornerShape(24.dp)).background(C.SurfaceHigh)
+            .clickable(onClickLabel = "Buka pencarian", onClick = onClick).padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Ic.Search, null, tint = C.Muted, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(hint, color = C.Muted, fontSize = 14.sp)
+    }
+}
+
+/** Tarik ke bawah dari paling atas untuk memuat ulang. */
+@Composable
+fun rememberPullState(listState: androidx.compose.foundation.lazy.LazyListState, onRefresh: () -> Unit): Pair<androidx.compose.ui.input.nestedscroll.NestedScrollConnection, Float> {
+    var pull by remember { mutableFloatStateOf(0f) }
+    val threshold = with(androidx.compose.ui.platform.LocalDensity.current) { 110.dp.toPx() }
+    val cb = rememberUpdatedState(onRefresh)
+    val conn = remember {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                if (pull > 0f && available.y < 0f) { val d = minOf(pull, -available.y); pull -= d; return androidx.compose.ui.geometry.Offset(0f, -d) }
+                return androidx.compose.ui.geometry.Offset.Zero
+            }
+            override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.Drag && available.y > 0f) { pull = (pull + available.y * 0.6f).coerceAtMost(threshold * 1.4f); return available }
+                return androidx.compose.ui.geometry.Offset.Zero
+            }
+            override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                if (pull >= threshold) cb.value()
+                pull = 0f
+                return androidx.compose.ui.unit.Velocity.Zero
+            }
+        }
+    }
+    return conn to (pull / threshold).coerceIn(0f, 1f)
+}
+
+/** Kilau abu-abu berdenyut sebagai placeholder saat gambar belum siap. */
+@Composable
+fun Skeleton(modifier: Modifier = Modifier) {
+    val tr = androidx.compose.animation.core.rememberInfiniteTransition(label = "sk")
+    val a by tr.animateFloat(0.04f, 0.16f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900), androidx.compose.animation.core.RepeatMode.Reverse), label = "a")
+    Box(modifier.background(Color.White.copy(alpha = a)))
+}
+
 /* ---------------- Poster ---------------- */
 /** Poster + judul di bawahnya (maks 1 baris, dipotong dengan …). */
 @Composable
 fun PosterCard(f: Film, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(modifier.clickable(onClick = onClick)) {
-        Poster(f, Modifier.fillMaxWidth().aspectRatio(2f / 3f))
+        Box { Poster(f, Modifier.fillMaxWidth().aspectRatio(2f / 3f)); DoneBadge(f) }
         Text(f.name, fontSize = 12.sp, color = Color.White.copy(alpha = .88f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 7.dp))
     }
 }
@@ -87,12 +155,20 @@ fun Poster(film: Film, modifier: Modifier = Modifier, shape: androidx.compose.ui
         if (film.poster.isBlank() && thumb != null) {
             AsyncImage(thumb, film.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } else if (film.poster.isNotBlank()) {
-            val model: Any = remember(film.poster) {
-                if (film.poster.startsWith("data:")) {
-                    try { Base64.decode(film.poster.substringAfter("base64,"), Base64.DEFAULT) } catch (e: Exception) { "" }
-                } else film.poster
+            // Poster base64 didecode di thread latar (lazy) agar daftar panjang tetap mulus
+            val bytes by produceState<ByteArray?>(null, film.poster) {
+                value = if (film.poster.startsWith("data:")) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    try { Base64.decode(film.poster.substringAfter("base64,"), Base64.DEFAULT) } catch (e: Exception) { ByteArray(0) }
+                } else null
             }
-            AsyncImage(model, film.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            val isData = film.poster.startsWith("data:")
+            var ready by remember(film.poster) { mutableStateOf(false) }
+            if (!isData || bytes != null) {
+                val req = coil.request.ImageRequest.Builder(ctx).data(if (isData) bytes else film.poster)
+                    .memoryCacheKey(if (isData) "p_${film.id}_${film.poster.length}" else film.poster).crossfade(true).build()
+                AsyncImage(req, film.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, onSuccess = { ready = true }, onError = { ready = true })
+            }
+            if (!ready) Skeleton(Modifier.fillMaxSize())
         } else {
             // Tanpa gambar: pola segitiga (low-poly) yang unik per film
             Facets(seed, Modifier.fillMaxSize())
@@ -187,13 +263,22 @@ fun SectionTitle(text: String) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PosterRow(films: List<Film>, s: AppState, onOpen: (Film) -> Unit, showProgress: Boolean = false) {
+    var menuFor by remember { mutableStateOf<String?>(null) }
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(films, key = { it.id }) { f ->
-            Column(Modifier.width(118.dp).clickable { onOpen(f) }) {
+            Column(Modifier.width(118.dp).combinedClickable(onClick = { onOpen(f) }, onLongClick = { if (showProgress) menuFor = f.id })) {
                 Box {
                     Poster(f, Modifier.fillMaxWidth().aspectRatio(2f / 3f))
+                    if (!showProgress) DoneBadge(f)
+                    androidx.compose.material3.DropdownMenu(expanded = menuFor == f.id, onDismissRequest = { menuFor = null }, containerColor = C.Surface) {
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Hapus dari Lanjutkan", color = Color.White) },
+                            onClick = { s.hideFromContinue(f); menuFor = null },
+                        )
+                    }
                     if (showProgress) {
                         val p = s.lastProg(f)?.frac ?: 0f
                         Box(
@@ -224,9 +309,22 @@ fun EmptyState(s: AppState, text: String) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         BeetleMark(64.dp, Modifier.alpha(.55f))
         Spacer(Modifier.height(18.dp))
-        Text(text, color = C.Muted, textAlign = TextAlign.Center)
-        if (s.netError) {
-            Text("Gagal memuat data: ${s.lastError}", color = C.Subtle, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+        val ctx = LocalContext.current
+        if (s.netError && s.films.isEmpty()) {
+            Text("Belum bisa memuat daftar film.", color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text("Periksa koneksi internetmu, lalu tekan Muat ulang.", color = C.Muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+            Text("Detail teknis: ${s.lastError}", color = C.Subtle, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+        } else if (s.films.isEmpty() && s.loaded) {
+            Text("Belum ada film di daftar", color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text("1. Buka Master Stream di browser\n2. Masuk, lalu tempel link video X dan simpan\n3. Kembali ke sini, tekan Muat ulang", color = C.Muted, textAlign = TextAlign.Start, modifier = Modifier.padding(top = 8.dp))
+            Spacer(Modifier.height(14.dp))
+            AButton("Buka Master Stream", Ic.Search, false) {
+                runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ekinstru.web.app/master-stream/")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                s.suppressLock()
+            }
+        } else Text(text, color = C.Muted, textAlign = TextAlign.Center)
+        if (s.netError && s.films.isNotEmpty()) {
+            Text("Gagal memuat data.", color = C.Subtle, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
         } else if (s.loaded && s.lastRefresh != 0L) {
             val t = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(s.lastRefresh))
             Text("Data web terakhir dimuat: $t", color = C.Subtle, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
@@ -245,7 +343,13 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
     val used = remember(s.films) { s.films.flatMap { it.genres }.distinct().sorted() }
     val genre = picked?.takeIf { it in used }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val (pullConn, pullFrac) = rememberPullState(listState) {
+        scope.launch { s.refresh(); if (s.refreshNote.isEmpty()) s.refreshNote = "Sudah yang terbaru" }
+    }
+    LaunchedEffect(s.refreshNote) { if (s.refreshNote.isNotEmpty()) { kotlinx.coroutines.delay(3000); s.refreshNote = "" } }
+    Box(Modifier.fillMaxSize().nestedScroll(pullConn)) {
+    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
             Row(Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 BeetleMark(32.dp)
@@ -262,8 +366,9 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
                 Box(Modifier.clickable { onProfile() }) { Avatar(s.nickname, 40) }
             }
         }
+        item { SearchBarEntry("Cari film atau series…", onSearch) }
         if (s.nickname.isNotBlank()) item {
-            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 14.dp)) {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 14.dp)) {
                 Text("Halo,", color = Color(0xFFB4C7D9), fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 Text(s.nickname, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black, lineHeight = 34.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("Mau nonton apa hari ini?", color = C.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
@@ -311,7 +416,7 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
                     }
                 }
             }
-            val cont = s.films.filter { (s.lastProg(it)?.frac ?: 0f) in 0.02f..0.95f }.sortedByDescending { s.lastProg(it)?.ts ?: 0L }
+            val cont = s.films.filter { it.id !in s.hiddenCont && (s.lastProg(it)?.frac ?: 0f) in 0.02f..0.95f }.sortedByDescending { s.lastProg(it)?.ts ?: 0L }
             if (cont.isNotEmpty()) {
                 item { SectionTitle("Lanjutkan Menonton") }
                 item { PosterRow(cont, s, onPlay, showProgress = true) }
@@ -336,6 +441,17 @@ fun HomeScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit, onSe
                 }
             }
         }
+    }
+    if (pullFrac > 0f || s.refreshing) {
+        Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 8.dp).size(36.dp).clip(CircleShape).background(C.Surface), contentAlignment = Alignment.Center) {
+            if (s.refreshing) CircularProgressIndicator(color = C.Aqua, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+            else CircularProgressIndicator(progress = { pullFrac }, color = C.Aqua, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+        }
+    }
+    if (s.refreshNote.isNotEmpty()) {
+        Text(s.refreshNote, color = C.OnAqua, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 56.dp).clip(RoundedCornerShape(50)).background(C.Aqua).padding(horizontal = 16.dp, vertical = 8.dp))
+    }
     }
 }
 
@@ -449,7 +565,14 @@ fun ExtraScreen(s: AppState, onOpen: (Film) -> Unit) {
 fun MyListScreen(s: AppState, onOpen: (Film) -> Unit) {
     val land = LocalConfiguration.current.screenWidthDp > 600
     val cols = if (land) 6 else 3
-    val list = s.films.filter { it.id in s.favs }
+    var sort by remember { mutableIntStateOf(0) }
+    val list = s.films.filter { it.id in s.favs }.let { l ->
+        when (sort) {
+            1 -> l.sortedBy { it.name.lowercase() }
+            2 -> l.sortedByDescending { s.lastProg(it)?.ts ?: 0L }
+            else -> l
+        }
+    }
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(bottom = 16.dp)) {
         item {
             Row(Modifier.padding(horizontal = 16.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -460,6 +583,11 @@ fun MyListScreen(s: AppState, onOpen: (Film) -> Unit) {
                         modifier = Modifier.clip(RoundedCornerShape(50)).background(C.SurfaceHigh).padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
+            }
+        }
+        if (list.size > 1) item {
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf("Terbaru", "Abjad", "Terakhir ditonton").withIndex().toList()) { (i, n) -> Chip(n, sort == i) { sort = i } }
             }
         }
         if (list.isEmpty()) {
@@ -519,7 +647,9 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit, o
                 Text(f.synopsis, color = Color(0xFFD0DCE8), fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 4.dp))
             }
             Spacer(Modifier.height(20.dp))
-            AButton(if (resume) "LANJUTKAN ${fmtTime(prog!!.pos)}" else "PUTAR", Ic.PlayFill, true, Modifier.fillMaxWidth()) { onPlay() }
+            val finished = !f.isSeries && prog != null && prog.frac >= 0.95f
+            if (finished) Text("Sudah selesai ditonton", color = C.Aqua, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
+            AButton(if (finished) "MULAI DARI AWAL" else if (resume) "LANJUTKAN ${fmtTime(prog!!.pos)}" else "PUTAR", if (finished) Ic.Refresh else Ic.PlayFill, true, Modifier.fillMaxWidth()) { onPlay() }
             if (resume) {
                 Spacer(Modifier.height(10.dp))
                 Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(C.SurfaceHigh)) {
@@ -605,7 +735,7 @@ fun OnboardingScreen(onDone: (String) -> Unit) {
 
 /* ---------------- MOVIE / SERIES (genre, negara, tahun) ---------------- */
 @Composable
-fun BrowseScreen(s: AppState, series: Boolean, onOpen: (Film) -> Unit) {
+fun BrowseScreen(s: AppState, series: Boolean, onOpen: (Film) -> Unit, onSearch: () -> Unit = {}) {
     var mode by remember { mutableStateOf("Genre") }
     val base = remember(s.films, series) { s.films.filter { it.isSeries == series } }
     val groups: List<Pair<String, List<Film>>> = remember(base, mode) {
@@ -618,6 +748,7 @@ fun BrowseScreen(s: AppState, series: Boolean, onOpen: (Film) -> Unit) {
     }
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(bottom = 20.dp)) {
         item { Text(if (series) "Series" else "Movie", fontSize = 26.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) }
+        item { SearchBarEntry(if (series) "Cari series…" else "Cari film…", onSearch); Spacer(Modifier.height(12.dp)) }
         if (base.isEmpty()) item {
             if (series) Text("Belum ada series.\nTambahkan lewat web Master Stream dengan tipe Series.", color = C.Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(40.dp))
             else EmptyState(s, "Belum ada film.")
@@ -655,7 +786,7 @@ fun BrowseScreen(s: AppState, series: Boolean, onOpen: (Film) -> Unit) {
 
 /* ---------------- PROFIL & PENGATURAN ---------------- */
 @Composable
-fun ProfileScreen(s: AppState, onBack: () -> Unit) {
+fun ProfileScreen(s: AppState, onBack: () -> Unit, onHistory: () -> Unit = {}) {
     val ctx = LocalContext.current
     var editName by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(s.nickname) }
@@ -802,6 +933,9 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
         }
         SettingRow("Poster dari video", if (s.thumbPoster) "Aktif — film tanpa poster memakai thumbnail videonya" else "Mati — film tanpa poster memakai gambar pola", s.thumbPoster) { s.updateThumbPoster(!s.thumbPoster) }
 
+        SettingHeader("Riwayat")
+        SettingRow("Riwayat tontonan", "${s.progress.size} judul tercatat — ketuk untuk melihat atau menghapus", false) { onHistory() }
+
         SettingHeader("Pembaruan")
         Text("Aphodius v${BuildConfig.VERSION_NAME}", color = C.Muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
         val u = s.update
@@ -907,4 +1041,55 @@ fun UpdateCard(info: UpdateInfo, s: AppState, modifier: Modifier = Modifier) {
         }
         if (err.isNotEmpty()) Text(err, color = Color(0xFFFF6B6B), fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
     }
+}
+
+
+/* ---------------- RIWAYAT ---------------- */
+@Composable
+fun HistoryScreen(s: AppState, onBack: () -> Unit, onOpen: (Film) -> Unit) {
+    BackHandler { onBack() }
+    var confirmAll by remember { mutableStateOf(false) }
+    val rows = s.progress.entries.sortedByDescending { it.value.ts }.mapNotNull { (k, p) ->
+        val base = s.find(k.substringBefore('#')) ?: return@mapNotNull null
+        Triple(k, p, base)
+    }
+    Column(Modifier.fillMaxSize().background(C.Navy).statusBarsPadding().navigationBarsPadding()) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconBtn(Ic.Back, "Kembali", onBack)
+            Spacer(Modifier.width(12.dp))
+            Text("Riwayat tontonan", fontSize = 20.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+            if (rows.isNotEmpty()) Text("Hapus semua", color = C.Aqua, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { confirmAll = true }.padding(horizontal = 10.dp, vertical = 12.dp))
+        }
+        if (rows.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Belum ada riwayat tontonan.", color = C.Muted) }
+        } else LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
+            items(rows, key = { it.first }) { (k, p, f) ->
+                val ep = k.substringAfter('#', "")
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onOpen(f) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Poster(f, Modifier.width(48.dp).aspectRatio(2f / 3f), RoundedCornerShape(8.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(f.name + if (ep.isNotEmpty()) " • Ep $ep" else "", fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        val done = p.frac > 0.95f
+                        Text(if (done) "Selesai · ${SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(p.ts))}" else "${fmtTime(p.pos)} dari ${fmtTime(p.dur)}", color = if (done) C.Aqua else C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                        Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(C.SurfaceHigh)) { Box(Modifier.fillMaxWidth(p.frac.coerceIn(0f, 1f)).fillMaxHeight().background(C.Aqua)) }
+                    }
+                    IconBtn(Ic.Close, "Hapus dari riwayat", { s.removeHistory(k) }, size = 48.dp, tint = C.Muted, modifier = Modifier.padding(start = 6.dp))
+                }
+            }
+        }
+    }
+    if (confirmAll) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { confirmAll = false }, containerColor = C.Surface,
+        title = { Text("Hapus semua riwayat?", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold) },
+        text = { Text("Posisi terakhir semua film ikut terhapus.", color = C.Muted, fontSize = 13.sp) },
+        confirmButton = { Text("HAPUS", color = C.Aqua, fontWeight = FontWeight.Black, modifier = Modifier.clickable { s.clearHistory(); confirmAll = false }.padding(12.dp)) },
+        dismissButton = { Text("BATAL", color = C.Muted, modifier = Modifier.clickable { confirmAll = false }.padding(12.dp)) },
+    )
+}
+
+@Composable
+fun OfflineBanner() {
+    Text("Kamu offline, menampilkan data tersimpan", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().background(Color(0xFF7A4B12)).statusBarsPadding().padding(horizontal = 16.dp, vertical = 6.dp))
 }
