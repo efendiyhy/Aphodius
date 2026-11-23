@@ -56,6 +56,7 @@ data class NbPb(val playing: Boolean, val pos: Long, val at: Long, val seq: Long
     val stamp: String get() = "${seq}_$by"
 }
 data class NbMember(val uid: String, val name: String, val seen: Long, val voice: Boolean, val mic: Boolean)
+data class NbHist(val code: String, val filmId: String, val filmName: String, val host: Boolean)
 data class NbMsg(val id: String, val uid: String, val name: String, val text: String)
 
 /** Akses REST Firebase: login anonim, pencarian URL database, request biasa. */
@@ -221,17 +222,17 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
         return if (r.first == 401 || r.first == 403) "Tidak bisa masuk ruangan (periksa aturan database)" else "Gagal bergabung (kode ${r.first})"
     }
 
-    fun leave() {
+    /** Keluar dari ruangan. Ruangan tetap hidup; hanya host yang boleh menutupnya (deleteRoom = true). */
+    fun leave(deleteRoom: Boolean = false) {
         val v = voice; voice = null
         v?.stop()
         voiceOn = false
         streamJob?.cancel(); beatJob?.cancel()
         val host = isHost; val c = code; val u = me
-        // pembersihan di thread terpisah supaya selesai walau scope dibatalkan
         Thread {
             runCatching {
                 kotlinx.coroutines.runBlocking {
-                    if (host) { fb.req("DELETE", "rooms/$c"); fb.req("DELETE", "roomIdx/$c") }
+                    if (deleteRoom && host) { fb.req("DELETE", "rooms/$c"); fb.req("DELETE", "roomIdx/$c") }
                     else fb.req("DELETE", "rooms/$c/members/$u")
                 }
             }
@@ -600,6 +601,26 @@ class Nobar(ctx: Context) {
     var room by mutableStateOf<NobarRoom?>(null)
     var busy by mutableStateOf(false)
     var error by mutableStateOf("")
+    private val hp = app.getSharedPreferences("nobar_fb", Context.MODE_PRIVATE)
+
+    /** Riwayat ruangan terakhir (kode, id film, nama film, apakah host). */
+    var history by mutableStateOf(loadHistory())
+        private set
+
+    private fun loadHistory(): List<NbHist> = runCatching {
+        val a = org.json.JSONArray(hp.getString("hist", "[]"))
+        (0 until a.length()).map { i -> a.getJSONObject(i).let { NbHist(it.getString("c"), it.optString("f"), it.optString("n"), it.optBoolean("h")) } }
+    }.getOrDefault(emptyList())
+
+    private fun saveHistory(l: List<NbHist>) {
+        history = l
+        val a = org.json.JSONArray()
+        l.forEach { a.put(JSONObject().put("c", it.code).put("f", it.filmId).put("n", it.filmName).put("h", it.host)) }
+        hp.edit().putString("hist", a.toString()).apply()
+    }
+
+    fun remember(h: NbHist) { saveHistory((listOf(h) + history.filter { it.code != h.code }).take(8)) }
+    fun forget(code: String) { saveHistory(history.filter { it.code != code }) }
 
     private fun gen(): String = (1..6).map { CODE_CHARS.random() }.joinToString("")
 
@@ -623,6 +644,7 @@ class Nobar(ctx: Context) {
             }
             if (made == null) { if (error.isEmpty()) error = "Gagal membuat ruangan, coba lagi"; return }
             runCatching { fb.req("PUT", "roomIdx/$made", System.currentTimeMillis().toString()) }
+            remember(NbHist(made, film.id, film.name, true))
             val r = make(made, nick)
             room = r
             r.start()
@@ -639,9 +661,10 @@ class Nobar(ctx: Context) {
         busy = true; error = ""
         try {
             val info = fb.req("GET", "rooms/$code/info")
-            if (info.first != 200 || info.second == "null") { error = "Kode ruangan tidak ditemukan"; return }
-            val created = JSONObject(info.second).optLong("created")
-            if (created > 0 && System.currentTimeMillis() - created > 24 * 3600_000L) { error = "Ruangan sudah kedaluwarsa"; return }
+            if (info.first != 200 || info.second == "null") { error = "Ruangan tidak ditemukan atau sudah ditutup host"; forget(code); return }
+            val ij = JSONObject(info.second)
+            val created = ij.optLong("created")
+            if (created > 0 && System.currentTimeMillis() - created > 7 * 24 * 3600_000L) { error = "Ruangan sudah kedaluwarsa"; forget(code); return }
             // buang anggota basi supaya slot tidak terkunci
             val ms = fb.req("GET", "rooms/$code/members")
             if (ms.first == 200 && ms.second != "null") {
@@ -656,6 +679,7 @@ class Nobar(ctx: Context) {
             val r = make(code, nick)
             val err = r.enter()
             if (err != null) { error = err; return }
+            remember(NbHist(code, ij.optString("film"), ij.optString("filmName"), ij.optString("host") == fb.uid))
             room = r
             r.start()
         } catch (e: Exception) {
@@ -663,12 +687,16 @@ class Nobar(ctx: Context) {
         } finally { busy = false }
     }
 
+    /** Keluar tanpa menutup ruangan (bisa dilanjutkan dari riwayat). */
     fun leave() { room?.leave(); room = null }
+
+    /** Khusus host: tutup ruangan untuk semua orang. */
+    fun close() { val r = room ?: return; forget(r.code); r.leave(deleteRoom = true); room = null }
 
     /** Hapus ruangan lama (>24 jam) yang tertinggal. */
     private suspend fun cleanup() {
         runCatching {
-            val cutoff = System.currentTimeMillis() - 24 * 3600_000L
+            val cutoff = System.currentTimeMillis() - 7 * 24 * 3600_000L
             val r = fb.req("GET", "roomIdx", null, emptyMap(), "&orderBy=%22%24value%22&endAt=$cutoff&limitToFirst=10")
             if (r.first == 200 && r.second != "null") {
                 val j = JSONObject(r.second)

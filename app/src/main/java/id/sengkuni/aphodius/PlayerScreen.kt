@@ -131,6 +131,8 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     var dur by remember { mutableLongStateOf(0L) }
     var controls by remember { mutableStateOf(true) }
     var panel by remember { mutableStateOf<String?>(null) }
+    var chatOpen by remember { mutableStateOf(false) }
+    val micAct = if (room != null) rememberMicAction(room) else null
     var editing by remember { mutableStateOf(false) }
     var resize by remember { mutableIntStateOf(0) }
     var hud by remember { mutableStateOf<String?>(null) }
@@ -266,12 +268,13 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         onDispose { lifecycle.removeObserver(o) }
     }
 
-    BackHandler { if (editing) editing = false else if (panel != null) panel = null else onBack() }
+    BackHandler { if (editing) editing = false else if (chatOpen) chatOpen = false else if (panel != null) panel = null else onBack() }
 
     var volAcc by remember { mutableFloatStateOf(0f) }
     var dragLeft by remember { mutableStateOf(true) }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Row(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.weight(1f).fillMaxHeight().background(Color.Black)) {
         // Crop global yang disimpan pengguna. Nonaktif = video tampil apa adanya.
         val cr = s.crop
         val cropActive = s.cropOn && s.hasCrop && !editing
@@ -395,11 +398,11 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                     Text(film.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
                     if (room != null || s.find(film.id) != null) {
                         IconBtn(if (room != null) Ic.People else Ic.People, "Nobar", {
-                            if (room != null) panel = "nobar"
+                            if (room != null) chatOpen = !chatOpen
                             else if (!s.nobar.busy) scope.launch {
                                 s.nobar.create(film) { s.nickname }
                                 val r = s.nobar.room
-                                if (r != null) { r.publish(player.playWhenReady, player.currentPosition); panel = "nobar" }
+                                if (r != null) { r.publish(player.playWhenReady, player.currentPosition); chatOpen = true }
                                 else hud = s.nobar.error.ifBlank { "Gagal membuat ruangan" }
                             }
                         }, glass = true)
@@ -435,7 +438,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                         BarButton(Ic.Quality, "Kualitas · " + (if (s.quality == 0) "Otomatis" else "${s.quality}p")) { panel = "quality" }
                         BarButton(Ic.Speed, "Kecepatan · ${fmtSpeed(s.speed)}") { panel = "speed" }
                         BarButton(Ic.Crop, "Crop · " + (if (s.cropOn && s.hasCrop) "Aktif" else "Mati")) { panel = "crop" }
-                        if (room != null) BarButton(if (room.voiceOn && room.micOn) Ic.Mic else Ic.People, "Nobar · ${room.members.size}") { panel = "nobar" }
+                        if (room != null) BarButton(if (room.voiceOn && room.micOn) Ic.Mic else Ic.MicOff, if (!room.voiceOn) "Suara" else if (room.micOn) "Mik aktif" else "Mik mati") { micAct?.invoke() }
                         else if (next != null) BarButton(Ic.Next, "Berikutnya") { onNext(next) }
                     }
                 }
@@ -446,14 +449,10 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         if (panel != null && phase == 1) {
             Column(
                 Modifier.align(Alignment.CenterEnd).statusBarsPadding().navigationBarsPadding().padding(end = 24.dp)
-                    .width(if (panel == "nobar") 340.dp else 280.dp).clip(RoundedCornerShape(20.dp)).background(C.Surface.copy(alpha = .97f)).border(1.dp, C.Outline, RoundedCornerShape(20.dp)).padding(vertical = 8.dp)
+                    .width(280.dp).clip(RoundedCornerShape(20.dp)).background(C.Surface.copy(alpha = .97f)).border(1.dp, C.Outline, RoundedCornerShape(20.dp)).padding(vertical = 8.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
                 when (panel) {
-                    "nobar" -> if (room != null) {
-                        PanelTitle("Nonton bareng · ${room.code}")
-                        RoomPanel(room, Modifier.padding(horizontal = 14.dp).height(300.dp))
-                    }
                     "quality" -> {
                         PanelTitle("Kualitas video")
                         PanelItem("Otomatis (terbaik)", s.quality == 0) { s.setQualityPref(0); applyQuality(variants, 0, curVar, player) { curVar = it; startPlay(it, player.currentPosition) }; panel = null }
@@ -499,6 +498,13 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
             onSave = { s.saveCrop(it); editing = false },
             onCancel = { editing = false },
         )
+
+        // Pesan chat melayang di atas video saat panel chat tertutup
+        if (room != null && !chatOpen && phase == 1) {
+            ChatOverlay(room, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 20.dp, top = 72.dp).fillMaxWidth(0.6f))
+        }
+    }
+    if (chatOpen && room != null) ChatDock(room, { chatOpen = false }, Modifier.width(300.dp).fillMaxHeight())
     }
 }
 
