@@ -48,7 +48,7 @@ import java.util.Date
 import java.util.Locale
 
 enum class Tab(val label: String, val icon: ImageVector) {
-    Home("Beranda", Ic.Home), New("Baru", Ic.Eps), Movie("Movie", Ic.Play), Series("Series", Ic.Series), MyList("Daftarku", Ic.Bookmark)
+    Home("Beranda", Ic.Home), New("Baru", Ic.Eps), Movie("Movie", Ic.Play), Series("Series", Ic.Series), MyList("Daftarku", Ic.Bookmark), Extra("Extraordinary", Ic.Star)
 }
 
 // Gradien dasar poster pengganti (sama dengan mockup di folder portrait/ dan landscape/)
@@ -146,11 +146,11 @@ fun SplashScreen() {
 
 /* ---------------- Navigasi bawah ---------------- */
 @Composable
-fun BottomNav(tab: Tab, onTab: (Tab) -> Unit) {
+fun BottomNav(tab: Tab, extra: Boolean, onTab: (Tab) -> Unit) {
     Column(Modifier.fillMaxWidth().background(C.Surface)) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(C.Outline))
         Row(Modifier.fillMaxWidth().navigationBarsPadding().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
-            Tab.values().forEach { t ->
+            Tab.values().filter { if (extra) it != Tab.MyList else it != Tab.Extra }.forEach { t ->
                 val on = t == tab
                 Column(
                     Modifier.weight(1f).fillMaxHeight().clickable { onTab(t) },
@@ -177,7 +177,7 @@ fun SectionTitle(text: String) {
     Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(7.dp).rotate(45f).background(C.Aqua))
         Spacer(Modifier.width(10.dp))
-        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
     }
 }
 
@@ -413,6 +413,29 @@ fun NewScreen(s: AppState, onOpen: (Film) -> Unit, onPlay: (Film) -> Unit) {
     }
 }
 
+/* ---------------- EXTRAORDINARY ---------------- */
+@Composable
+fun ExtraScreen(s: AppState, onOpen: (Film) -> Unit) {
+    val land = LocalConfiguration.current.screenWidthDp > 600
+    val cols = if (land) 6 else 3
+    val list = s.extraFilms
+    LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(bottom = 16.dp)) {
+        item {
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Extraordinary", fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White, modifier = Modifier.weight(1f))
+                if (list.isNotEmpty()) Text("${list.size} judul", color = C.Muted, fontSize = 12.sp, modifier = Modifier.clip(RoundedCornerShape(50)).background(C.SurfaceHigh).padding(horizontal = 12.dp, vertical = 6.dp))
+            }
+        }
+        if (list.isEmpty()) item { Text("Belum ada film bergenre Extraordinary.", color = C.Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(40.dp)) }
+        items(list.chunked(cols)) { rowFilms ->
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                rowFilms.forEach { f -> PosterCard(f, Modifier.weight(1f)) { onOpen(f) } }
+                repeat(cols - rowFilms.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
 /* ---------------- DAFTARKU ---------------- */
 @Composable
 fun MyListScreen(s: AppState, onOpen: (Film) -> Unit) {
@@ -612,7 +635,7 @@ fun BrowseScreen(s: AppState, series: Boolean, onOpen: (Film) -> Unit) {
                 Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(7.dp).rotate(45f).background(C.Aqua))
                     Spacer(Modifier.width(10.dp))
-                    Text(g, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(g, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f))
                     Text("${list.size}", color = C.Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.clip(RoundedCornerShape(50)).background(C.SurfaceHigh).padding(horizontal = 10.dp, vertical = 4.dp))
                 }
                 PosterRow(list, s, onOpen)
@@ -634,6 +657,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
     var askPw by remember { mutableStateOf(false) }
     var pw by remember { mutableStateOf("") }
     var pwErr by remember { mutableStateOf("") }
+    var pwFor by remember { mutableStateOf("adults") }
     var wantAdults by remember { mutableStateOf(false) } // aktifkan Adults setelah PIN dibuat
     var info by remember { mutableStateOf("") }
 
@@ -642,8 +666,8 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
     if (askPw) {
         Box(Modifier.fillMaxSize().background(C.Navy).statusBarsPadding().navigationBarsPadding().imePadding(), contentAlignment = Alignment.Center) {
             Column(Modifier.padding(28.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Aktifkan Adults", fontSize = 22.sp, fontWeight = FontWeight.Black)
-                Text("Masukkan password untuk menampilkan film 21+", color = C.Muted, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
+                Text(if (pwFor == "extra") "Aktifkan Extraordinary" else "Aktifkan Adults", fontSize = 22.sp, fontWeight = FontWeight.Black)
+                Text(if (pwFor == "extra") "Masukkan password untuk membuka menu Extraordinary" else "Masukkan password untuk menampilkan film 21+", color = C.Muted, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
                 val shape = RoundedCornerShape(16.dp)
                 Box(Modifier.fillMaxWidth().clip(shape).background(C.Surface).border(1.dp, C.Outline, shape).padding(horizontal = 16.dp, vertical = 15.dp)) {
                     if (pw.isEmpty()) Text("Password", color = C.Subtle)
@@ -656,9 +680,10 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
                 Text(pwErr, color = Color(0xFFFF6B6B), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp).height(20.dp))
                 Spacer(Modifier.height(8.dp))
                 AButton("AKTIFKAN", null, true, Modifier.fillMaxWidth()) {
-                    if (!s.checkAdultsPassword(pw)) { pwErr = "Password salah" } else {
+                    if (!(if (pwFor == "extra") s.checkExtraPassword(pw) else s.checkAdultsPassword(pw))) { pwErr = "Password salah" } else {
                         askPw = false; pw = ""; pwErr = ""
-                        if (s.lockEnabled) s.enableAdults(true) else { wantAdults = true; err = ""; pinMode = "set1" }
+                        if (pwFor == "extra") s.enableExtra(true)
+                        else if (s.lockEnabled) s.enableAdults(true) else { wantAdults = true; err = ""; pinMode = "set1" }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -722,13 +747,19 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
             if (s.lockEnabled && s.adults) info = "Kunci aplikasi wajib aktif selama Adults menyala. Matikan Adults dulu."
             else if (s.lockEnabled) { info = ""; err = ""; pinMode = "off" } else { info = ""; err = ""; pinMode = "set1" }
         }
-        SettingRow("Adults", if (s.adults) "Aktif — film 21+ ditampilkan" else "Mati — film 21+ disembunyikan", s.adults) {
-            info = ""
-            if (s.adults) s.enableAdults(false) else { pw = ""; pwErr = ""; askPw = true }
-        }
-        if (info.isNotEmpty()) Text(info, color = Color(0xFFFFB454), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         if (s.lockEnabled && biometricAvailable(ctx)) {
             SettingRow("Buka dengan sidik jari", "Alternatif selain PIN", s.biometric) { s.setBiometricPref(!s.biometric) }
+        }
+        if (info.isNotEmpty()) Text(info, color = Color(0xFFFFB454), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+
+        SettingHeader("Konten")
+        SettingRow("Adults", if (s.adults) "Aktif — film 21+ ditampilkan" else "Mati — film 21+ disembunyikan", s.adults) {
+            info = ""
+            if (s.adults) s.enableAdults(false) else { pwFor = "adults"; pw = ""; pwErr = ""; askPw = true }
+        }
+        SettingRow("Extraordinary", if (s.extra) "Aktif — menu Extraordinary menggantikan Daftarku" else "Mati — butuh password", s.extra) {
+            info = ""
+            if (s.extra) s.enableExtra(false) else { pwFor = "extra"; pw = ""; pwErr = ""; askPw = true }
         }
 
         SettingHeader("Suara")
@@ -756,7 +787,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
         }
         if (s.hasCrop) Text("Hapus crop tersimpan", color = C.Aqua, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).clickable { s.clearCrop() })
 
-        SettingHeader("Tentang")
+        SettingHeader("Pembaruan")
         Text("Aphodius v${BuildConfig.VERSION_NAME}", color = C.Muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
         val u = s.update
         if (u != null) UpdateCard(u, s, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
@@ -775,6 +806,17 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit) {
                 }
                 if (msg.isNotEmpty()) Text(msg, color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
             }
+        }
+
+        Spacer(Modifier.height(28.dp))
+        Box(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(1.dp).background(C.Outline))
+        Column(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            BeetleMark(36.dp, Modifier.alpha(.8f))
+            Text("Aphodius", fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+            Text("Dikembangkan oleh SengkuniDeveloper", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+            Text("github.com/efendiyhy/Aphodius", color = C.Aqua, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp).clickable {
+                ctx.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/efendiyhy/Aphodius")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            })
         }
     }
 }

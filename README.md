@@ -20,6 +20,11 @@ Rilis baru: naikkan angka di `version.txt` lalu push ke `main` — CI membuat ta
 - Mockup UI: `portrait/`, `landscape/`, `00-design-system.svg`; buka `preview.html` untuk melihat semuanya. Bangkitkan ulang dengan `python3 tools/branding/mockups.py`.
 - Warna utama Aqua `#22C7EC`, aksen emas scarab `#F2A33A`, latar `#050D16`. Detail ada di `00-design-system.svg`.
 
+## v1.6.0
+- Fitur Extraordinary (butuh password): film bergenre Extraordinary hanya tampil di menu sendiri yang menggantikan Daftarku, tidak bercampur dengan film lain.
+- Profil ditata ulang (Keamanan, Konten, Suara, Pemutar, Pembaruan) dan info developer di bagian paling bawah.
+- Judul kategori di Beranda (Lanjutkan Menonton, Rekomendasi untukmu, dll.) kini putih.
+
 ## v1.5.0
 - Fitur Bagikan dihapus.
 - Nama film tampil di bawah poster (dipotong dengan … bila terlalu panjang).

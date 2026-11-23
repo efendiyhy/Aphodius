@@ -104,8 +104,9 @@ fun App(s: AppState) {
                         PlayerScreen(cur, next, s, onBack = { stack = stack.dropLast(1) }, onNext = { stack = stack.dropLast(1) + Route.Play(f.id, top.ep + 1) })
                     }
                 } else {
-                    val idx = s.films.indexOfFirst { it.id == f.id }
-                    val next = if (s.films.size > 1) s.films[(idx + 1) % s.films.size].takeIf { !it.isSeries } else null
+                    val pool = if (f.isExtra) s.extraFilms else s.films
+                    val idx = pool.indexOfFirst { it.id == f.id }
+                    val next = if (pool.size > 1) pool[(idx + 1) % pool.size].takeIf { !it.isSeries } else null
                     key(f.id) {
                         PlayerScreen(f, next, s, onBack = { stack = stack.dropLast(1) }, onNext = { n -> stack = stack.dropLast(1) + Route.Play(n.id) })
                     }
@@ -120,15 +121,18 @@ fun App(s: AppState) {
             null -> Column(Modifier.fillMaxSize()) {
                 s.update?.let { u -> UpdateBanner(u) { stack = stack + Route.Profile } }
                 Box(Modifier.weight(1f)) {
-                    when (tab) {
+                    when (if (tab == Tab.MyList || tab == Tab.Extra) (if (s.extra) Tab.Extra else Tab.MyList) else tab) {
                         Tab.Home -> HomeScreen(s, ::open, ::play, onSearch = { stack = stack + Route.Search }, onProfile = { stack = stack + Route.Profile })
                         Tab.New -> NewScreen(s, ::open, ::play)
                         Tab.Movie -> BrowseScreen(s, false, ::open)
                         Tab.Series -> BrowseScreen(s, true, ::open)
                         Tab.MyList -> MyListScreen(s, ::open)
+                        Tab.Extra -> ExtraScreen(s, ::open)
                     }
                 }
-                BottomNav(tab) { tab = it }
+                val shown = if (s.extra) Tab.Extra else Tab.MyList
+                val cur = if (tab == Tab.MyList || tab == Tab.Extra) shown else tab
+                BottomNav(cur, s.extra) { tab = it }
             }
         }
     }

@@ -61,7 +61,7 @@ fun AphodiusTheme(content: @Composable () -> Unit) {
             surfaceVariant = C.SurfaceHigh, outline = C.Outline,
             onPrimary = C.OnAqua, onBackground = Color.White, onSurface = Color.White,
         ),
-        content = { androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(fontFamily = AFont), content) },
+        content = { androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(fontFamily = AFont, color = Color.White), content) },
     )
 }
 

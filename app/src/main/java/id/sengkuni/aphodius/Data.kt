@@ -16,6 +16,7 @@ import java.net.URL
 val DATA_URLS = listOf(
     "https://raw.githubusercontent.com/efendiyhy/master-stream-data/main/data.json",
 )
+private const val EXTRA_HASH = "9b9ea8122c0bc2f76051bf30aab683d4639115251e2348fbb1b059032aaa0577"
 private const val ADULTS_HASH = "f9df6085f1c1e0a24a806a19428ff92a5f5ad23dd4fe1ada92275c470b04bfb0"
 const val UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
 
@@ -39,6 +40,8 @@ data class Film(
 ) {
     val isSeries: Boolean get() = type.equals("series", ignoreCase = true)
     /** Film dewasa: bergenre 21+ (disembunyikan kecuali fitur Adults aktif). */
+    /** Genre "Extraordinary": hanya tampil di menu sendiri saat fitur Extraordinary aktif. */
+    val isExtra: Boolean get() = genres.any { it.trim().equals("Extraordinary", ignoreCase = true) }
     val isAdult: Boolean get() = genres.any { it.trim().equals("21+", ignoreCase = true) }
 }
 
@@ -170,6 +173,9 @@ class Store(ctx: Context) {
     var adults: Boolean
         get() = sp.getBoolean("adults", false)
         set(v) { sp.edit().putBoolean("adults", v).apply() }
+    var extra: Boolean
+        get() = sp.getBoolean("extra", false)
+        set(v) { sp.edit().putBoolean("extra", v).apply() }
     var biometric: Boolean
         get() = sp.getBoolean("biometric", false)
         set(v) { sp.edit().putBoolean("biometric", v).apply() }
@@ -201,7 +207,12 @@ class AppState(ctx: Context) {
     var eq by mutableStateOf(store.eq)
     var adults by mutableStateOf(store.adults && store.pinHash.isNotEmpty())
     /** Daftar yang tampil: film 21+ disembunyikan bila Adults mati. */
-    val films: List<Film> get() = if (adults) allFilms else allFilms.filter { !it.isAdult }
+    private val visible: List<Film> get() = if (adults) allFilms else allFilms.filter { !it.isAdult }
+    var extra by mutableStateOf(store.extra)
+    /** Film biasa: film Extraordinary tidak pernah bercampur di sini. */
+    val films: List<Film> get() = visible.filter { !it.isExtra }
+    /** Film Extraordinary: hanya ada bila fitur aktif. */
+    val extraFilms: List<Film> get() = if (extra) visible.filter { it.isExtra } else emptyList()
     var genres by mutableStateOf<List<String>>(emptyList())
     var loaded by mutableStateOf(false)
     var refreshing by mutableStateOf(false)
@@ -219,7 +230,7 @@ class AppState(ctx: Context) {
     var biometric by mutableStateOf(store.biometric)
     var update by mutableStateOf<UpdateInfo?>(null)
 
-    fun find(id: String): Film? = films.firstOrNull { it.id == id }
+    fun find(id: String): Film? = (films + extraFilms).firstOrNull { it.id == id }
 
     /** Progres terakhir sebuah judul. Untuk series: episode yang terakhir ditonton. */
     fun lastProg(f: Film): Prog? =
@@ -322,6 +333,9 @@ class AppState(ctx: Context) {
     }
     fun checkPin(pin: String): Boolean = store.pinHash.isNotEmpty() && hashPin(store.pinSalt, pin) == store.pinHash
     fun clearPin() { store.pinHash = ""; store.pinSalt = ""; lockEnabled = false; setBiometricPref(false); enableAdults(false) }
+    fun enableExtra(on: Boolean) { extra = on; store.extra = on }
+    fun checkExtraPassword(pw: String): Boolean =
+        java.security.MessageDigest.getInstance("SHA-256").digest(pw.trim().toByteArray()).joinToString("") { "%02x".format(it) } == EXTRA_HASH
     fun enableAdults(on: Boolean) { val v = on && lockEnabled; adults = v; store.adults = v }
     /** Password fitur Adults = password web Master Stream (disimpan sebagai hash). */
     fun checkAdultsPassword(pw: String): Boolean =
