@@ -53,8 +53,8 @@ fun App(s: AppState) {
         s.loadCache()
         launch { s.refresh() }
         launch {
-            // Terus ikuti perubahan dari web: cek ulang setiap 60 detik selama aplikasi terbuka
-            while (true) { delay(60_000); s.refresh() }
+            // Terus ikuti perubahan dari web: cek ulang setiap 30 detik selama aplikasi terbuka
+            while (true) { delay(30_000); s.refresh() }
         }
         launch {
             // Cek pembaruan aplikasi: saat dibuka, lalu tiap 6 jam
@@ -73,7 +73,7 @@ fun App(s: AppState) {
     DisposableEffect(lifecycle) {
         val o = LifecycleEventObserver { _, e ->
             if (e == Lifecycle.Event.ON_STOP && s.lockEnabled) locked = true
-            if (e == Lifecycle.Event.ON_RESUME && System.currentTimeMillis() - s.lastRefresh > 20_000) {
+            if (e == Lifecycle.Event.ON_RESUME && System.currentTimeMillis() - s.lastRefresh > 5_000) {
                 scope.launch { s.refresh() }
             }
         }

@@ -37,6 +37,30 @@ data class Prog(val pos: Long, val dur: Long, val ts: Long) {
     val frac: Float get() = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f
 }
 
+/** GitHub API (selalu segar, tidak lewat cache CDN 5 menit milik raw.githubusercontent.com). */
+const val API_URL = "https://api.github.com/repos/efendiyhy/master-stream-data/contents/data.json"
+private var apiEtag: String? = null
+
+/** Mengembalikan isi data.json, atau null bila belum berubah (304). */
+fun fetchApi(timeoutMs: Int = 15000): String? {
+    val c = URL(API_URL).openConnection() as HttpURLConnection
+    try {
+        c.connectTimeout = timeoutMs
+        c.readTimeout = timeoutMs
+        c.setRequestProperty("User-Agent", UA)
+        c.setRequestProperty("Accept", "application/vnd.github.raw+json")
+        c.setRequestProperty("Cache-Control", "no-cache")
+        apiEtag?.let { c.setRequestProperty("If-None-Match", it) }
+        val code = c.responseCode
+        if (code == 304) return null
+        if (code !in 200..299) throw java.io.IOException("HTTP $code")
+        apiEtag = c.getHeaderField("ETag")
+        return c.inputStream.bufferedReader().use { it.readText() }
+    } finally {
+        c.disconnect()
+    }
+}
+
 fun httpGet(url: String, timeoutMs: Int = 15000): String {
     val c = URL(url).openConnection() as HttpURLConnection
     try {
@@ -183,6 +207,20 @@ class AppState(ctx: Context) {
         var err = ""
         try {
             val t = System.currentTimeMillis()
+            // Jalur cepat: API GitHub + ETag (perubahan web terlihat dalam hitungan detik)
+            try {
+                val text = withContext(Dispatchers.IO) { fetchApi() }?.trim()
+                if (text == null) { netError = false; lastError = ""; lastRefresh = System.currentTimeMillis(); return }
+                if (text.startsWith("{") && apply(text)) {
+                    store.cachedJson = text
+                    netError = false
+                    lastError = ""
+                    lastRefresh = System.currentTimeMillis()
+                    return
+                }
+            } catch (e: Exception) {
+                err = "api.github.com: ${e.message ?: e.javaClass.simpleName}"
+            }
             for (base in DATA_URLS) {
                 try {
                     val text = withContext(Dispatchers.IO) { httpGet("$base?t=$t") }.trim()
