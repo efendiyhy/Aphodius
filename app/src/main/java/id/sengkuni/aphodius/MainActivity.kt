@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.*
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -37,7 +38,9 @@ class MainActivity : FragmentActivity() {
             statusBarStyle = SystemBarStyle.dark(AColor.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(AColor.TRANSPARENT),
         )
+        CrashLog.install(applicationContext)
         val state = AppState(applicationContext)
+        state.crashInfo = CrashLog.take(applicationContext)
         setContent { AphodiusTheme { App(state) } }
     }
 }
@@ -87,6 +90,15 @@ fun App(s: AppState) {
     if (s.nickname.isBlank()) { OnboardingScreen { s.saveNickname(it) }; return }
     if (locked && s.lockEnabled) { LockScreen(s) { locked = false }; return }
 
+    s.crashInfo?.let { info ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { s.crashInfo = null },
+            containerColor = C.Surface,
+            title = { androidx.compose.material3.Text("Aplikasi sempat tertutup", color = androidx.compose.ui.graphics.Color.White) },
+            text = { androidx.compose.material3.Text(info, color = C.Muted, fontSize = 11.sp) },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { s.crashInfo = null }) { androidx.compose.material3.Text("Tutup", color = C.Aqua) } },
+        )
+    }
     val top = stack.lastOrNull()
     BackHandler(enabled = top == null && tab != Tab.Home) { tab = Tab.Home }
     BackHandler(enabled = top is Route.Detail || top is Route.Search) { stack = stack.dropLast(1) }

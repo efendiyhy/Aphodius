@@ -437,10 +437,16 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
                     PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(ctx).createInitializationOptions())
                     inited = true
                 }
-                val adm = JavaAudioDeviceModule.builder(ctx).createAudioDeviceModule()
+                CrashLog.mark(ctx, "membuat modul audio")
+                val adm = JavaAudioDeviceModule.builder(ctx)
+                    .setUseHardwareAcousticEchoCanceler(false)
+                    .setUseHardwareNoiseSuppressor(false)
+                    .createAudioDeviceModule()
+                CrashLog.mark(ctx, "membuat pabrik WebRTC")
                 val f = PeerConnectionFactory.builder().setAudioDeviceModule(adm).createPeerConnectionFactory()
                 adm.release()
                 factory = f
+                CrashLog.mark(ctx, "membuat mikrofon")
                 val mc = MediaConstraints().apply {
                     mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
                     mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
@@ -452,6 +458,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
                 am.mode = AudioManager.MODE_IN_COMMUNICATION
                 am.isSpeakerphoneOn = !hasHeadset()
                 current.filter { it.uid != room.me && it.voice }.forEach { connect(it.uid) }
+                CrashLog.clear(ctx)
             }.onFailure { room.voiceFailed(it.message ?: it.javaClass.simpleName) }
         }
     }
@@ -667,6 +674,35 @@ class Nobar(ctx: Context) {
                 val j = JSONObject(r.second)
                 j.keys().forEach { k -> fb.req("DELETE", "rooms/$k"); fb.req("DELETE", "roomIdx/$k") }
             }
+        }
+    }
+}
+
+/** Catatan crash sederhana: simpan galat terakhir dan penanda langkah suara, ditampilkan saat aplikasi dibuka lagi. */
+object CrashLog {
+    private fun sp(c: Context) = c.applicationContext.getSharedPreferences("crashlog", Context.MODE_PRIVATE)
+
+    fun install(c: Context) {
+        val prev = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            runCatching { sp(c).edit().putString("err", (e.toString() + "\n" + e.stackTrace.take(12).joinToString("\n")).take(1800)).commit() }
+            prev?.uncaughtException(t, e)
+        }
+    }
+
+    fun mark(c: Context, step: String) { sp(c).edit().putString("step", step).commit() }
+    fun clear(c: Context) { sp(c).edit().remove("step").commit() }
+
+    /** Mengembalikan keterangan crash sebelumnya (atau null) lalu menghapusnya. */
+    fun take(c: Context): String? {
+        val p = sp(c)
+        val err = p.getString("err", null)
+        val step = p.getString("step", null)
+        p.edit().clear().commit()
+        return when {
+            err != null -> err
+            step != null -> "Aplikasi tertutup mendadak saat suara nobar: $step (kemungkinan galat bawaan WebRTC di perangkat ini)."
+            else -> null
         }
     }
 }
