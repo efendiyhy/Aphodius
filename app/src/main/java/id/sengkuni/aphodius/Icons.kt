@@ -42,6 +42,8 @@ object Ic {
     val Eps by lazy { stroke("eps", "M4 4h16v16H4zM9 8l7 4-7 4z") }
     val Rewind by lazy { stroke("rewind", "M4 12a8 8 0 1 0 3-6.2M4 3v5h5") }
     val Forward by lazy { stroke("forward", "M20 12a8 8 0 1 1-3-6.2M20 3v5h-5") }
+    val Lock by lazy { stroke("lock", "M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3") }
+    val LockOpen by lazy { stroke("lockopen", "M6 11h12v9H6zM8 11V8a4 4 0 0 1 7.5-1.5") }
     val Mic by lazy { stroke("mic", "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3") }
     val MicOff by lazy { stroke("micoff", "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M3 3l18 18") }
     val Chat by lazy { stroke("chat", "M4 5h16v11H9l-5 4z") }

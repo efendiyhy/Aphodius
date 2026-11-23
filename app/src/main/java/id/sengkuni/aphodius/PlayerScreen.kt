@@ -132,6 +132,10 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     var controls by remember { mutableStateOf(true) }
     var panel by remember { mutableStateOf<String?>(null) }
     var chatOpen by remember { mutableStateOf(false) }
+    var locked by remember { mutableStateOf(false) }
+    var showUnlock by remember { mutableStateOf(false) }
+    var unlockTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(unlockTick) { if (unlockTick > 0) { showUnlock = true; delay(2500); showUnlock = false } }
     val micAct = if (room != null) rememberMicAction(room) else null
     var editing by remember { mutableStateOf(false) }
     var resize by remember { mutableIntStateOf(0) }
@@ -268,7 +272,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         onDispose { lifecycle.removeObserver(o) }
     }
 
-    BackHandler { if (editing) editing = false else if (chatOpen) chatOpen = false else if (panel != null) panel = null else onBack() }
+    BackHandler { if (locked) unlockTick++ else if (editing) editing = false else if (chatOpen) chatOpen = false else if (panel != null) panel = null else onBack() }
 
     var volAcc by remember { mutableFloatStateOf(0f) }
     var dragLeft by remember { mutableStateOf(true) }
@@ -396,18 +400,12 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                 Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconBtn(Ic.Back, "Kembali", onBack, glass = true)
                     Text(film.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-                    if (room != null || s.find(film.id) != null) {
-                        IconBtn(if (room != null) Ic.People else Ic.People, "Nobar", {
-                            if (room != null) chatOpen = !chatOpen
-                            else if (!s.nobar.busy) scope.launch {
-                                s.nobar.create(film) { s.nickname }
-                                val r = s.nobar.room
-                                if (r != null) { r.publish(player.playWhenReady, player.currentPosition); chatOpen = true }
-                                else hud = s.nobar.error.ifBlank { "Gagal membuat ruangan" }
-                            }
-                        }, glass = true)
+                    if (room != null) {
+                        IconBtn(Ic.People, "Chat nobar", { chatOpen = !chatOpen }, glass = true)
                         Spacer(Modifier.width(8.dp))
                     }
+                    IconBtn(Ic.Lock, "Kunci layar", { locked = true; controls = false; panel = null; hud = "Layar terkunci"; unlockTick++ }, glass = true)
+                    Spacer(Modifier.width(8.dp))
                     IconBtn(Ic.Aspect, "Rasio layar", { resize = (resize + 1) % resizeModes.size; hud = resizeModes[resize].second }, glass = true)
                 }
                 Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(36.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -502,6 +500,19 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         // Pesan chat melayang di atas video saat panel chat tertutup
         if (room != null && !chatOpen && phase == 1) {
             ChatOverlay(room, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 20.dp, top = 72.dp).fillMaxWidth(0.6f))
+        }
+
+        // Kunci layar: semua sentuhan (kecerahan, volume, geser, ketuk) diblokir, hanya tombol buka kunci yang aktif
+        if (locked) {
+            Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onTap = { unlockTick++ }) }) {
+                if (showUnlock) {
+                    Box(
+                        Modifier.align(Alignment.CenterEnd).navigationBarsPadding().padding(end = 28.dp).size(60.dp).clip(CircleShape)
+                            .background(Color.Black.copy(alpha = .6f)).clickable { locked = false; showUnlock = false; controls = true },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Ic.LockOpen, "Buka kunci", tint = Color.White, modifier = Modifier.size(28.dp)) }
+                }
+            }
         }
     }
     if (chatOpen && room != null) ChatDock(room, { chatOpen = false }, Modifier.width(300.dp).fillMaxHeight())

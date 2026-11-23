@@ -92,6 +92,7 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 - Film dewasa dan Extraordinary tetap bisa dinobarkan; anggota perlu fitur itu aktif di profilnya.
 - Keluar dari ruangan tidak menutupnya: ruangan tetap aktif sampai host menutupnya, dan bisa dilanjutkan dari riwayat.
 - Chat di pemutar tampil sebagai panel di kanan (video bergeser), atau pesan melayang transparan saat layar penuh.
+- Kunci layar di pemutar agar tidak tersentuh saat menonton.
 - Nobar untuk series belum tersedia.
 - Pengaturan baru *Poster dari video*: film tanpa poster memakai thumbnail videonya.
 </details>
