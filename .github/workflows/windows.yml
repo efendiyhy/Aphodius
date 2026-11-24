@@ -2,7 +2,7 @@ name: Windows Portable
 
 on:
   push:
-    branches: [main]
+    branches: [main, win]
     paths:
       - 'windows/**'
       - 'version.txt'
