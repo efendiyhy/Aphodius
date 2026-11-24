@@ -665,7 +665,7 @@ fun DetailScreen(f: Film, s: AppState, onBack: () -> Unit, onPlay: () -> Unit, o
             }
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionTile(if (fav) Ic.Check else Ic.Plus, if (fav) "Di Daftarku" else "Daftarku", Modifier.weight(1f)) { s.toggleFav(f.id) }
+                if (!f.isExtra) ActionTile(if (fav) Ic.Check else Ic.Plus, if (fav) "Di Daftarku" else "Daftarku", Modifier.weight(1f)) { s.toggleFav(f.id) }
                 if (!f.isSeries) ActionTile(Ic.People, "Nobar", Modifier.weight(1f)) { onNobar() }
             }
             if (f.isSeries && f.episodes.isNotEmpty()) {
@@ -809,6 +809,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit, onHistory: () -> Unit = {}) {
     var editName by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(s.nickname) }
     var pinMode by remember { mutableStateOf<String?>(null) } // "set1","set2","off"
+    var wantExtra by remember { mutableStateOf(false) }
     var firstPin by remember { mutableStateOf("") }
     var err by remember { mutableStateOf("") }
     var tick by remember { mutableIntStateOf(0) }
@@ -819,7 +820,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit, onHistory: () -> Unit = {}) {
     var wantAdults by remember { mutableStateOf(false) } // aktifkan Adults setelah PIN dibuat
     var info by remember { mutableStateOf("") }
 
-    BackHandler { if (askPw) { askPw = false; pw = ""; pwErr = "" } else if (pinMode != null) { pinMode = null; wantAdults = false } else onBack() }
+    BackHandler { if (askPw) { askPw = false; pw = ""; pwErr = "" } else if (pinMode != null) { pinMode = null; wantAdults = false; wantExtra = false } else onBack() }
 
     if (askPw) {
         Box(Modifier.fillMaxSize().background(C.Navy).statusBarsPadding().navigationBarsPadding().imePadding(), contentAlignment = Alignment.Center) {
@@ -840,7 +841,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit, onHistory: () -> Unit = {}) {
                 AButton("AKTIFKAN", null, true, Modifier.fillMaxWidth()) {
                     if (!(if (pwFor == "extra") s.checkExtraPassword(pw) else s.checkAdultsPassword(pw))) { pwErr = "Password salah" } else {
                         askPw = false; pw = ""; pwErr = ""
-                        if (pwFor == "extra") s.enableExtra(true)
+                        if (pwFor == "extra") { if (s.lockEnabled) s.enableExtra(true) else { wantExtra = true; err = ""; pinMode = "set1" } }
                         else if (s.lockEnabled) s.enableAdults(true) else { wantAdults = true; err = ""; pinMode = "set1" }
                     }
                 }
@@ -859,11 +860,11 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit, onHistory: () -> Unit = {}) {
                 PinPad(title, sub, err, resetTick = tick) { pin ->
                     when (pinMode) {
                         "set1" -> { firstPin = pin; err = ""; pinMode = "set2"; tick++ }
-                        "set2" -> if (pin == firstPin) { s.setPin(pin); if (wantAdults) { s.enableAdults(true); wantAdults = false }; pinMode = null; err = "" } else { err = "PIN tidak sama, ulangi"; pinMode = "set1"; tick++ }
+                        "set2" -> if (pin == firstPin) { s.setPin(pin); if (wantAdults) { s.enableAdults(true); wantAdults = false }; if (wantExtra) { s.enableExtra(true); wantExtra = false }; pinMode = null; err = "" } else { err = "PIN tidak sama, ulangi"; pinMode = "set1"; tick++ }
                         else -> if (s.checkPin(pin)) { s.clearPin(); pinMode = null; err = "" } else { err = "PIN salah"; tick++ }
                     }
                 }
-                Text("Batal", color = C.Aqua, modifier = Modifier.padding(top = 18.dp).clickable { pinMode = null; err = ""; wantAdults = false })
+                Text("Batal", color = C.Aqua, modifier = Modifier.padding(top = 18.dp).clickable { pinMode = null; err = ""; wantAdults = false; wantExtra = false })
             }
         }
         return
@@ -902,7 +903,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit, onHistory: () -> Unit = {}) {
 
         SettingHeader("Keamanan")
         SettingRow("Kunci aplikasi", if (s.lockEnabled) "Aktif — PIN $PIN_LEN digit" else "Mati", s.lockEnabled) {
-            if (s.lockEnabled && s.adults) info = "Kunci aplikasi wajib aktif selama Adults menyala. Matikan Adults dulu."
+            if (s.lockEnabled && (s.adults || s.extra)) info = "Kunci aplikasi wajib aktif selama Adults atau Extraordinary menyala. Matikan keduanya dulu."
             else if (s.lockEnabled) { info = ""; err = ""; pinMode = "off" } else { info = ""; err = ""; pinMode = "set1" }
         }
         if (s.lockEnabled && biometricAvailable(ctx)) {
@@ -915,7 +916,7 @@ fun ProfileScreen(s: AppState, onBack: () -> Unit, onHistory: () -> Unit = {}) {
             info = ""
             if (s.adults) s.enableAdults(false) else { pwFor = "adults"; pw = ""; pwErr = ""; askPw = true }
         }
-        SettingRow("Extraordinary", if (s.extra) "Aktif — menu Extraordinary menggantikan Daftarku" else "Mati — butuh password", s.extra) {
+        SettingRow("Extraordinary", if (s.extra) "Aktif — menu Extraordinary menggantikan Daftarku" else "Mati — butuh password dan Kunci aplikasi aktif", s.extra) {
             info = ""
             if (s.extra) s.enableExtra(false) else { pwFor = "extra"; pw = ""; pwErr = ""; askPw = true }
         }

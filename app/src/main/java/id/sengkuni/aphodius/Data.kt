@@ -236,7 +236,7 @@ class AppState(ctx: Context) {
     var adults by mutableStateOf(store.adults && store.pinHash.isNotEmpty())
     /** Daftar yang tampil: film 21+ disembunyikan bila Adults mati. */
     private val visible: List<Film> get() = if (adults) allFilms else allFilms.filter { !it.isAdult }
-    var extra by mutableStateOf(store.extra)
+    var extra by mutableStateOf(store.extra && store.pinHash.isNotEmpty())
     /** Film biasa: film Extraordinary tidak pernah bercampur di sini. */
     val films: List<Film> get() = visible.filter { !it.isExtra }
     /** Film Extraordinary: hanya ada bila fitur aktif. */
@@ -337,6 +337,7 @@ class AppState(ctx: Context) {
     }
 
     fun toggleFav(id: String) {
+        if (find(id)?.isExtra == true) return // film Extraordinary tidak boleh masuk Daftarku
         favs = if (id in favs) favs - id else favs + id
         store.saveFavs(favs)
     }
@@ -393,8 +394,8 @@ class AppState(ctx: Context) {
         lockEnabled = true
     }
     fun checkPin(pin: String): Boolean = store.pinHash.isNotEmpty() && hashPin(store.pinSalt, pin) == store.pinHash
-    fun clearPin() { store.pinHash = ""; store.pinSalt = ""; lockEnabled = false; setBiometricPref(false); enableAdults(false) }
-    fun enableExtra(on: Boolean) { extra = on; store.extra = on }
+    fun clearPin() { store.pinHash = ""; store.pinSalt = ""; lockEnabled = false; setBiometricPref(false); enableAdults(false); enableExtra(false) }
+    fun enableExtra(on: Boolean) { val v = on && lockEnabled; extra = v; store.extra = v }
     fun checkExtraPassword(pw: String): Boolean =
         java.security.MessageDigest.getInstance("SHA-256").digest(pw.trim().toByteArray()).joinToString("") { "%02x".format(it) } == EXTRA_HASH
     fun enableAdults(on: Boolean) { val v = on && lockEnabled; adults = v; store.adults = v }
