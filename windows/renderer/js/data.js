@@ -97,7 +97,9 @@ var App = {
     return this.frac(best.p) > 0.95 ? Math.min(best.i + 1, f.episodes.length - 1) : best.i;
   },
 
+  lastText: '', changed: false,
   apply: function (text) {
+    if (text === this.lastText) return true;
     try {
       var r = parseFilms(text);
       var before = new Set(this.allFilms.map(function (f) { return f.id; }));
@@ -106,7 +108,7 @@ var App = {
         var n = this.allFilms.filter(function (f) { return !before.has(f.id); }).length;
         if (n > 0) this.refreshNote = n + ' film baru masuk';
       }
-      this.genres = r.genres; this.loaded = true;
+      this.genres = r.genres; this.loaded = true; this.lastText = text; this.changed = true;
       return true;
     } catch (e) { return false; }
   },
@@ -126,8 +128,9 @@ var App = {
 
   async refresh() {
     if (this.refreshing) return;
-    this.refreshing = true; this.emit();
-    var err = '';
+    this.refreshing = true;
+    var btn0 = typeof document !== 'undefined' && document.querySelector && document.querySelector('.refbtn'); if (btn0) btn0.classList.add('spin');
+    var prevNet = this.netError, err = '';
     try {
       try {
         var text = await this.fetchApi();
@@ -142,7 +145,12 @@ var App = {
         else err = 'Format data tidak dikenali';
       } catch (e) { err = 'raw.githubusercontent.com: ' + (e.message || e); }
       this.netError = true; this.lastError = err;
-    } finally { this.refreshing = false; this.emit(); }
+    } finally {
+      this.refreshing = false;
+      var btn1 = typeof document !== 'undefined' && document.querySelector && document.querySelector('.refbtn'); if (btn1) btn1.classList.remove('spin');
+      var ch = this.changed || prevNet !== this.netError; this.changed = false;
+      if (ch) this.emit();
+    }
   },
 
   toggleFav: function (id) {

@@ -11,7 +11,7 @@ input { font: inherit; color: #fff; }
 .shell { display: flex; height: 100%; }
 .side { width: 210px; flex: none; background: var(--surface); border-right: 1px solid var(--outline); display: flex; flex-direction: column; padding: 18px 12px; gap: 4px; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; font-weight: 900; font-size: 20px; letter-spacing: .5px; }
-.brand img { width: 32px; height: 32px; border-radius: 8px; }
+.brand { padding: 6px 8px 20px; } .brand img { height: 38px; width: auto; display: block; }
 .nav { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 12px; color: var(--muted); font-weight: 600; text-align: left; width: 100%; }
 .nav:hover { background: rgba(255,255,255,.05); } .nav.on { background: rgba(34,199,236,.16); color: var(--aqua); }
 .side .grow { flex: 1; }
@@ -38,11 +38,11 @@ input { font: inherit; color: #fff; }
 .hero .info { position: absolute; left: 24px; bottom: 22px; right: 24px; } .hero h2 { margin: 0; font-size: 34px; font-weight: 900; } .hero p { margin: 6px 0 16px; color: var(--muted); }
 .hero .acts { display: flex; gap: 10px; max-width: 420px; } .hero .acts .btn { flex: 1; }
 h3.sec { font-size: 18px; font-weight: 800; margin: 26px 0 12px; }
-.row { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+.row { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; contain: layout style; }
 .row .card { width: 150px; flex: none; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 14px; }
-.card { cursor: pointer; position: relative; } .card:hover .poster { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(0,0,0,.5); }
-.poster { position: relative; aspect-ratio: 2/3; border-radius: 14px; overflow: hidden; background: linear-gradient(160deg, #0B4F7A, #0D1A28); transition: transform .15s, box-shadow .15s; display: flex; align-items: center; justify-content: center; }
+.card { cursor: pointer; position: relative; contain: layout paint style; content-visibility: auto; contain-intrinsic-size: 150px 270px; } .card:hover .poster { transform: translateY(-3px); }
+.poster { position: relative; aspect-ratio: 2/3; border-radius: 14px; overflow: hidden; background: linear-gradient(160deg, #0B4F7A, #0D1A28); transition: transform .15s; display: flex; align-items: center; justify-content: center; }
 .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .poster .ph { font-weight: 900; font-size: 34px; color: rgba(255,255,255,.35); padding: 8px; text-align: center; }
 .card .t { font-weight: 700; font-size: 13px; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .card .m { color: var(--subtle); font-size: 11px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -110,3 +110,5 @@ h3.sec { font-size: 18px; font-weight: 800; margin: 26px 0 12px; }
 .lockov { position: absolute; inset: 0; z-index: 7; display: flex; align-items: flex-end; justify-content: flex-start; padding: 16px; } .lockov .pbtn { background: rgba(0,0,0,.6); height: 44px; }
 .hint { position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.75); padding: 12px 18px; border-radius: 14px; max-width: 460px; text-align: center; z-index: 6; line-height: 1.5; font-size: 13px; }
 .cropwin { position: absolute; border: 2px dashed var(--aqua); background: rgba(34,199,236,.08); }
+
+.dev { position: fixed; right: 16px; bottom: 10px; z-index: 5; font-size: 11px; color: var(--subtle); opacity: .75; pointer-events: none; letter-spacing: .3px; } .dev b { color: var(--aqua); font-weight: 700; }

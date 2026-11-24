@@ -39,7 +39,7 @@ function startPlayback(f, o, room) {
 
 function sideNav() {
   var cur = State.stack.length ? ({ detail: State.tab, search: State.tab, history: 'profile' }[route().t] || route().t) : State.tab;
-  var side = h('div', { class: 'side' }, h('div', { class: 'brand' }, h('img', { src: 'icon.png' }), 'Aphodius'));
+  var side = h('div', { class: 'side' }, h('div', { class: 'brand' }, h('img', { src: 'logo.svg', alt: 'Aphodius' })));
   TABS.forEach(function (t) {
     var key = t[0], label = t[1], ic = t[2];
     if (key === 'mylist' && App.extra) { key = 'extra'; label = 'Extraordinary'; ic = 'gem'; }
@@ -70,7 +70,7 @@ var renderQ = 0;
 function render() {
   if (!$app) return;
   State.disposers.forEach(function (d) { d(); }); State.disposers = [];
-  State.keyTarget = null;
+  State.keyTarget = null; Lazy.reset();
   var r = route();
   var scroll = $app.querySelector('.main'); var st = scroll ? scroll.scrollTop : 0; var same = scroll && scroll._r === JSON.stringify(r);
   if (r.t === 'nobar') State.film = r.film || State.film;
@@ -124,7 +124,7 @@ function welcome(done) {
   var inp = h('input', { class: 'field', placeholder: 'Nama sapaan', maxlength: 24, style: { textAlign: 'center' } });
   var go = function () { var n = inp.value.trim(); if (!n) { inp.focus(); return; } App.set('nickname', n); done(); };
   inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
-  clear($app).append(h('div', { class: 'welcome' }, h('img', { src: 'icon.png', width: 96, height: 96, style: { borderRadius: '24px' } }), h('h2', {}, 'Selamat datang di Aphodius'), h('p', {}, 'Siapa nama sapaanmu?'), inp,
+  clear($app).append(h('div', { class: 'welcome' }, h('img', { src: 'icon.png', width: 96, height: 96 }), h('h2', {}, 'Selamat datang di Aphodius'), h('p', {}, 'Siapa nama sapaanmu?'), inp,
     h('div', { style: { marginTop: '16px' } }, btn('MULAI', null, true, go, 'block'))));
   setTimeout(function () { inp.focus(); }, 50);
 }

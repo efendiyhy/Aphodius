@@ -76,6 +76,21 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 ## Riwayat Pembaruan
 
 <details open>
+<summary><b>v1.10.1</b> — Windows lebih ringan dan mulus</summary>
+
+- Windows: poster diperkecil dan hanya dimuat saat mendekati layar (dibuang lagi saat jauh), daftar panjang dirender bertahap, dan muat ulang otomatis tidak lagi membangun ulang layar. Pemakaian memori turun sekitar 40% dan scroll jauh lebih mulus.
+- Windows: logo kembali memakai logo Aphodius asli, dan nama developer ada di kanan bawah.
+</details>
+
+<details>
+<summary><b>v1.10.0</b> — Versi Windows portabel</summary>
+
+- **Aphodius untuk Windows** (ZIP portabel, tanpa instalasi) dengan fitur yang sama seperti di Android, termasuk Nobar lintas perangkat Android dan Windows.
+- Film **Extraordinary** tidak bisa lagi ditambahkan ke Daftarku.
+- Mengaktifkan Extraordinary mewajibkan **kunci aplikasi (PIN)** aktif. Bila belum ada PIN, aplikasi langsung menawarkan membuatnya. Mematikan PIN ikut mematikan Extraordinary.
+</details>
+
+<details>
 <summary><b>v1.6.0</b> — Extraordinary dan profil baru</summary>
 
 - Menu **Extraordinary** yang dibuka dengan sandi. Isinya terpisah dan menggantikan Daftarku.

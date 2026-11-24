@@ -26,38 +26,50 @@ function toggle(on, onchange) {
 }
 function sectionTitle(t) { return h('h3', { class: 'sec' }, t); }
 
-/* Poster dengan cadangan thumbnail dari tengah video */
+/* Poster: URL diperkecil, dimuat hanya saat mendekati layar, dibuang saat jauh (hemat memori & mulus saat scroll) */
+function posterUrl(u, w) {
+  var m = /^(https:\/\/m\.media-amazon\.com\/images\/.*?)\._V1_[^\/]*?(\.\w+)$/.exec(u || '');
+  return m ? m[1] + '._V1_UX' + w + '_' + m[2] : u;
+}
+
+/* Cuplikan dari tengah video untuk film tanpa poster: satu per satu, hanya yang terlihat, disimpan di IndexedDB */
 var Thumbs = {
   q: [], running: 0, mem: {},
   get: function (f, cb) {
     var key = 'th:' + f.id;
     if (this.mem[key]) return cb(this.mem[key]);
+    var job = { f: f, key: key, cb: cb, dead: false };
+    f._job = job;
     IDB.get(key).then(function (v) {
+      if (job.dead) return;
       if (v) { Thumbs.mem[key] = v; return cb(v); }
-      Thumbs.q.push({ f: f, key: key, cb: cb }); Thumbs.pump();
+      Thumbs.q.push(job); Thumbs.pump();
     });
   },
+  cancel: function (f) { if (f._job) { f._job.dead = true; f._job = null; } },
   pump: function () {
-    while (this.running < 2 && this.q.length) { var j = this.q.shift(); this.running++; this.work(j); }
+    while (this.running < 1 && this.q.length) {
+      var j = this.q.shift(); if (j.dead) continue;
+      this.running++; this.work(j);
+    }
   },
   work: function (j) {
-    var done = function (url) { Thumbs.running--; if (url) { Thumbs.mem[j.key] = url; IDB.set(j.key, url); j.cb(url); } Thumbs.pump(); };
-    var link = j.f.link;
-    Extractor.extract(link).then(function (list) {
+    var done = function (url) { Thumbs.running--; if (url) { Thumbs.mem[j.key] = url; IDB.set(j.key, url); if (!j.dead) j.cb(url); } Thumbs.pump(); };
+    Extractor.extract(j.f.link).then(function (list) {
       var mp4 = list.filter(function (v) { return !v.hls; });
-      var v = mp4.length ? mp4[mp4.length - 1] : null; // kualitas terkecil agar ringan
+      var v = mp4.length ? mp4[mp4.length - 1] : null; // kualitas terkecil
       if (!v) return done(null);
-      var vid = document.createElement('video'); vid.muted = true; vid.preload = 'auto'; vid.crossOrigin = 'anonymous';
+      var vid = document.createElement('video'); vid.muted = true; vid.preload = 'metadata'; vid.crossOrigin = 'anonymous';
       var fin = false, to = setTimeout(function () { end(null); }, 25000);
       function end(u) { if (fin) return; fin = true; clearTimeout(to); try { vid.removeAttribute('src'); vid.load(); } catch (e) {} done(u); }
       vid.onloadedmetadata = function () { vid.currentTime = Math.max(1, (vid.duration || 0) / 2); };
       vid.onseeked = function () {
         try {
-          var c = document.createElement('canvas'); var w = 320; c.width = w; c.height = Math.round(w * 1.5);
+          var c = document.createElement('canvas'); c.width = 240; c.height = 360;
           var vw = vid.videoWidth, vh = vid.videoHeight; if (!vw || !vh) return end(null);
-          var scale = Math.max(c.width / vw, c.height / vh); var dw = vw * scale, dh = vh * scale;
+          var scale = Math.max(c.width / vw, c.height / vh), dw = vw * scale, dh = vh * scale;
           c.getContext('2d').drawImage(vid, (c.width - dw) / 2, (c.height - dh) / 2, dw, dh);
-          end(c.toDataURL('image/jpeg', 0.8));
+          end(c.toDataURL('image/jpeg', 0.75));
         } catch (e) { end(null); }
       };
       vid.onerror = function () { end(null); };
@@ -66,15 +78,38 @@ var Thumbs = {
   },
 };
 
-function posterEl(f) {
+var Lazy = {
+  io: null, extra: [],
+  reset: function () {
+    if (this.io) this.io.disconnect();
+    this.extra.forEach(function (o) { o.disconnect(); }); this.extra = [];
+    this.io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) Lazy.show(e.target); else Lazy.hide(e.target); });
+    }, { rootMargin: '600px 300px' });
+  },
+  show: function (b) {
+    if (b._on) return; b._on = true;
+    var f = b._f;
+    var put = function (src) { if (!b._on) return; var img = h('img', { decoding: 'async', draggable: 'false' }); img.src = src; b.replaceChildren(img); };
+    var thumb = function () { if (App.thumbPoster) Thumbs.get(f, put); };
+    if (f.poster) {
+      var img = h('img', { decoding: 'async', draggable: 'false' });
+      img.onerror = function () { if (b._on) { b.replaceChildren(b._ph.cloneNode(true)); thumb(); } };
+      img.src = posterUrl(f.poster, b._w); b.replaceChildren(img);
+    } else thumb();
+  },
+  hide: function (b) {
+    if (!b._on) return; b._on = false;
+    Thumbs.cancel(b._f);
+    b.replaceChildren(b._ph.cloneNode(true));
+  },
+};
+
+function posterEl(f, w, eager) {
   var box = h('div', { class: 'poster' });
-  var setImg = function (src) { clear(box); box.append(h('img', { src: src, loading: 'lazy', draggable: 'false' })); };
-  var ph = function () { clear(box); box.append(h('div', { class: 'ph' }, f.name)); };
-  if (f.poster) {
-    var img = h('img', { src: f.poster, loading: 'lazy', draggable: 'false' });
-    img.onerror = function () { ph(); if (App.thumbPoster) Thumbs.get(f, setImg); };
-    box.append(img);
-  } else { ph(); if (App.thumbPoster) Thumbs.get(f, setImg); }
+  box._f = f; box._w = w || 300; box._ph = h('div', { class: 'ph' }, f.name);
+  box.append(box._ph.cloneNode(true));
+  if (eager || !Lazy.io) Lazy.show(box); else Lazy.io.observe(box);
   return box;
 }
 function card(f, opts) {
@@ -88,8 +123,23 @@ function card(f, opts) {
   if (opts.onhide) el.append(h('button', { class: 'xbtn', title: 'Sembunyikan dari Lanjutkan Menonton', onclick: function (e) { e.stopPropagation(); opts.onhide(f); } }, icon('close', 14)));
   return el;
 }
-function posterRow(list, opts) { return h('div', { class: 'row' }, list.map(function (f) { return card(f, opts); })); }
-function grid(list, opts) { return h('div', { class: 'grid' }, list.map(function (f) { return card(f, opts); })); }
+function posterRow(list, opts) { return h('div', { class: 'row' }, list.slice(0, 24).map(function (f) { return card(f, opts); })); }
+function grid(list, opts) {
+  var g = h('div', { class: 'grid' }), i = 0, N = 36;
+  var sent = h('div', { style: { height: '1px', gridColumn: '1 / -1' } });
+  var io = null;
+  var more = function () {
+    for (var end = Math.min(list.length, i + N); i < end; i++) g.insertBefore(card(list[i], opts), sent);
+    if (i >= list.length) { sent.remove(); if (io) io.disconnect(); }
+    else if (io) { io.unobserve(sent); io.observe(sent); }
+  };
+  g.append(sent);
+  if (list.length > N && window.IntersectionObserver) {
+    io = new IntersectionObserver(function (es) { if (es.some(function (e) { return e.isIntersecting; })) more(); }, { rootMargin: '900px' });
+    Lazy.extra.push(io); more(); io.observe(sent);
+  } else { N = list.length; more(); }
+  return g;
+}
 function emptyState(text) {
   return h('div', { class: 'empty' }, text, h('div', { style: { marginTop: '16px' } },
     App.netError ? [btn('Coba lagi', 'refresh', true, function () { App.refresh(); }), h('div', { class: 'err' }, App.lastError)] : null));
@@ -149,7 +199,7 @@ function homeScreen(state) {
   var top = h('div', { class: 'topbar' },
     h('div', { class: 'hello' }, App.nickname ? [h('small', {}, 'Halo,'), h('b', {}, App.nickname), h('span', {}, 'Mau nonton apa hari ini?')] : null),
     h('div', { class: 'sp' }),
-    h('button', { class: 'iconbtn' + (App.refreshing ? ' spin' : ''), title: 'Muat ulang', onclick: function () { App.refresh(); } }, icon('refresh', 20)),
+    h('button', { class: 'iconbtn refbtn' + (App.refreshing ? ' spin' : ''), title: 'Muat ulang', onclick: function () { App.refresh(); } }, icon('refresh', 20)),
     h('button', { class: 'iconbtn', title: 'Nobar', onclick: function () { UI.go({ t: 'nobar' }); } }, icon('people', 20)),
     h('button', { class: 'iconbtn', title: 'Cari', onclick: function () { UI.go({ t: 'search' }); } }, icon('search', 20)),
     h('button', { class: 'iconbtn', title: 'Profil', onclick: function () { UI.go({ t: 'profile' }); } }, avatar(App.nickname, 36)));
@@ -166,7 +216,7 @@ function homeScreen(state) {
   if (state.genre) { page.append(grid(films.filter(function (f) { return f.genres.indexOf(state.genre) >= 0; }))); return page; }
   var hero = films.find(function (f) { return f.recommended; }) || films[0];
   page.append(h('div', { class: 'hero', onclick: function () { UI.openFilm(hero); } },
-    (function () { var p = posterEl(hero); return p; })(), h('div', { class: 'shade' }), h('div', { class: 'tag' }, '◆ SOROTAN'),
+    posterEl(hero, 640, true), h('div', { class: 'shade' }), h('div', { class: 'tag' }, '◆ SOROTAN'),
     h('div', { class: 'info' }, h('h2', {}, hero.name), h('p', {}, meta(hero)),
       h('div', { class: 'acts', onclick: function (e) { e.stopPropagation(); } },
         btn('PUTAR', 'play', true, function () { UI.play(hero); }),
@@ -299,7 +349,7 @@ function detailScreen(id) {
     });
     body.append(eps);
   }
-  page.append(h('div', { class: 'detail' }, posterEl(f), body));
+  page.append(h('div', { class: 'detail' }, posterEl(f, 500, true), body));
   return page;
 }
 
