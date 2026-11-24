@@ -9,17 +9,18 @@
   <a href="https://github.com/efendiyhy/Aphodius/releases/latest"><img alt="Unduh" src="https://img.shields.io/github/v/release/efendiyhy/Aphodius?label=versi%20terbaru&color=22C7EC&style=for-the-badge"></a>
   <img alt="Total unduhan" src="https://img.shields.io/github/downloads/efendiyhy/Aphodius/total?label=total%20unduhan&color=F2A33A&style=for-the-badge">
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white">
+  <img alt="Windows" src="https://img.shields.io/badge/Windows-10%2F11%20(x64)-0078D4?style=for-the-badge&logo=windows&logoColor=white">
 </p>
 
 <p align="center">
-  <a href="https://github.com/efendiyhy/Aphodius/releases/latest"><b>⬇️ Unduh Aplikasi (APK)</b></a>
+  <a href="https://github.com/efendiyhy/Aphodius/releases/latest"><b>⬇️ Android (APK)</b></a> &nbsp;·&nbsp; <a href="https://github.com/efendiyhy/Aphodius/releases/latest"><b>🖥️ Windows (ZIP portabel)</b></a>
 </p>
 
 ---
 
 ## Apa itu Aphodius?
 
-Aphodius adalah aplikasi nonton untuk Android. Koleksi film dan series ditampilkan seperti aplikasi streaming pada umumnya: ada poster, sinopsis, rating, dan kategori. Cukup buka, pilih judul, lalu putar layar penuh.
+Aphodius adalah aplikasi nonton untuk Android dan Windows. Koleksi film dan series ditampilkan seperti aplikasi streaming pada umumnya: ada poster, sinopsis, rating, dan kategori. Cukup buka, pilih judul, lalu putar layar penuh.
 
 Daftar film **selalu diperbarui otomatis**. Judul baru yang ditambahkan akan muncul sendiri di aplikasimu, tanpa perlu memasang ulang.
 
@@ -67,6 +68,15 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 
 > Butuh Android 8.0 atau lebih baru.
 
+### Windows (portabel)
+
+1. Dari halaman **[Rilis](https://github.com/efendiyhy/Aphodius/releases/latest)** unduh `Aphodius-windows-<versi>.zip`.
+2. Ekstrak seluruh isinya ke folder mana saja, lalu jalankan `Aphodius.exe`. Tidak perlu instalasi.
+3. Semua data (profil, PIN, riwayat, Daftarku) tersimpan di folder `AphodiusData` di samping `Aphodius.exe`. Pindahkan satu folder itu untuk memindahkan semuanya.
+
+> Butuh Windows 10/11 64-bit. Aplikasi belum bertanda tangan digital, jadi Windows mungkin menampilkan peringatan *Windows protected your PC*. Klik **More info → Run anyway**.
+> Fiturnya sama dengan Android: Beranda, Movie/Series, Cari, Daftarku, Extraordinary, Adults, kunci PIN, pemutar lengkap (kualitas, kecepatan, lompat, timer tidur, crop, equalizer, kunci layar), riwayat, dan Nobar dengan chat, suara, dan sinkron putar. Ruangan Nobar bisa dipakai bersama pengguna Android. Pintasan pemutar: Spasi, ← →, ↑ ↓, F, M, C, Esc.
+
 ## Statistik Unduhan
 
 <p align="center">
@@ -76,6 +86,14 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 ## Riwayat Pembaruan
 
 <details open>
+<summary><b>v1.10.0</b> — Versi Windows portabel</summary>
+
+- **Aphodius untuk Windows** (ZIP portabel, tanpa instalasi) dengan fitur yang sama seperti di Android, termasuk Nobar lintas perangkat Android dan Windows.
+- Film **Extraordinary** tidak bisa lagi ditambahkan ke Daftarku.
+- Mengaktifkan Extraordinary mewajibkan **kunci aplikasi (PIN)** aktif. Bila belum ada PIN, aplikasi langsung menawarkan membuatnya. Mematikan PIN ikut mematikan Extraordinary.
+</details>
+
+<details>
 <summary><b>v1.6.0</b> — Extraordinary dan profil baru</summary>
 
 - Menu **Extraordinary** yang dibuka dengan sandi. Isinya terpisah dan menggantikan Daftarku.
@@ -144,7 +162,7 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 
 ## Untuk Developer
 
-Aplikasi dibangun dengan Kotlin dan Jetpack Compose. Rilis dibuat otomatis oleh GitHub Actions setiap kali `version.txt` dinaikkan di cabang `main`. Aset logo ada di `branding/`, mockup desain di `portrait/` dan `landscape/`.
+Aplikasi dibangun dengan Kotlin dan Jetpack Compose. Rilis dibuat otomatis oleh GitHub Actions setiap kali `version.txt` dinaikkan di cabang `main`. Versi Windows ada di `windows/` (Electron, HTML/JS), dikemas jadi ZIP portabel oleh workflow `Windows Portable` dan dipasang ke rilis yang sama. Jalankan uji logika dengan `cd windows && npm test`. Aset logo ada di `branding/`, mockup desain di `portrait/` dan `landscape/`.
 
 ---
 

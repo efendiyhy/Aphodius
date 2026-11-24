@@ -1,0 +1,100 @@
+name: Windows Portable
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'windows/**'
+      - 'version.txt'
+      - '.github/workflows/windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+
+      - name: Versi
+        id: ver
+        run: |
+          V="$(tr -d '[:space:]' < version.txt)"
+          echo "name=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Pasang dependensi
+        working-directory: windows
+        run: npm ci
+
+      - name: Uji logika
+        working-directory: windows
+        run: npm test
+
+      - name: Selaraskan versi aplikasi
+        working-directory: windows
+        run: npm version "${{ steps.ver.outputs.name }}" --no-git-tag-version --allow-same-version
+
+      - name: Kemas aplikasi (win32-x64)
+        working-directory: windows
+        run: |
+          npx electron-packager . Aphodius --platform=win32 --arch=x64 --out=dist --overwrite --icon=icon.ico --asar \
+            --app-version="${{ steps.ver.outputs.name }}" \
+            --ignore="^/test" --ignore="^/dist" --ignore="^/package-lock.json" --ignore="^/README"
+          ls dist/Aphodius-win32-x64 | head -30
+
+      - name: Buat ZIP portabel
+        working-directory: windows
+        run: |
+          rm -rf stage && mkdir stage
+          mv dist/Aphodius-win32-x64 stage/Aphodius
+          cat > stage/Aphodius/BACA-SAYA.txt <<'TXT'
+          APHODIUS UNTUK WINDOWS (PORTABEL)
+
+          1. Ekstrak seluruh isi ZIP ke folder mana saja (jangan dijalankan dari dalam ZIP).
+          2. Jalankan Aphodius.exe. Tidak perlu instalasi.
+          3. Semua data (profil, PIN, riwayat, Daftarku) disimpan di folder "AphodiusData"
+             di samping Aphodius.exe. Pindahkan seluruh folder untuk memindahkan data.
+          4. Bila muncul peringatan "Windows protected your PC", klik "More info" lalu "Run anyway".
+             Peringatan ini muncul karena aplikasi belum bertanda tangan digital.
+
+          Pintasan di pemutar: Spasi putar/jeda, panah kiri/kanan lompat, panah atas/bawah volume,
+          F layar penuh, M bisu, C chat nobar, Esc kembali.
+          TXT
+          ZIP="Aphodius-windows-${{ steps.ver.outputs.name }}.zip"
+          cd stage && powershell -NoProfile -Command "Compress-Archive -Path Aphodius -DestinationPath ../$ZIP -CompressionLevel Optimal" && cd ..
+          ls -la "$ZIP"
+          echo "ZIP=windows/$ZIP" >> "$GITHUB_ENV"
+
+      - name: Unggah artefak
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aphodius-windows
+          path: ${{ env.ZIP }}
+
+      # Pada main: pasang ke rilis v<versi> (dibuat oleh workflow Build & Release; bila belum ada, tunggu lalu buat sendiri)
+      - name: Pasang ke GitHub Release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.ver.outputs.name }}"
+          for i in $(seq 1 40); do
+            if gh release view "$TAG" > /dev/null 2>&1; then break; fi
+            echo "Menunggu rilis $TAG ($i/40)..."; sleep 30
+          done
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --target "${{ github.sha }}" --title "Aphodius ${{ steps.ver.outputs.name }}" --generate-notes
+          fi
+          gh release upload "$TAG" "$ZIP" --clobber
+          gh release view "$TAG" --json assets -q '.assets[].name'

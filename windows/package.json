@@ -1,0 +1,19 @@
+{
+  "name": "aphodius-windows",
+  "productName": "Aphodius",
+  "version": "1.10.0",
+  "description": "Aphodius untuk Windows (portabel)",
+  "main": "main.js",
+  "author": "efendiyhy",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/logic.test.js",
+    "pack": "electron-packager . Aphodius --platform=win32 --arch=x64 --out=dist --overwrite --icon=icon.ico --asar"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@electron/packager": "^18.3.6",
+    "electron": "45.4.1"
+  }
+}

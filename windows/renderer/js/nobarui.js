@@ -1,0 +1,129 @@
+'use strict';
+/* UI Nobar: menu masuk, lobi, kotak chat, daftar anggota, reaksi. */
+var EMOJIS = ['😂', '❤️', '😮', '👏', '🔥', '😢'];
+
+function memberStrip(room, canKick) {
+  var box = h('div', { class: 'members' });
+  var now = room.serverNow();
+  room.members.forEach(function (m) {
+    var st = room.peerState[m.uid];
+    var isHost = room.info && room.info.host === m.uid;
+    var status = m.buf ? 'menunggu' : 'siap';
+    var el = h('div', { class: 'mem' }, avatar(m.name, 28),
+      h('div', {}, h('div', {}, m.name + (m.uid === room.me ? ' (kamu)' : '') + (isHost ? ' ★' : '')),
+        h('div', { class: 'st ' + (m.buf ? 'wait' : 'ok') }, status + (m.voice ? (m.mic ? ' · 🎙' : ' · 🔇') : '') + (st && m.voice && m.uid !== room.me ? ' · ' + st : ''))));
+    if (canKick && room.isHost && m.uid !== room.me) el.append(h('button', { title: 'Keluarkan', onclick: function () {
+      confirmBox('Keluarkan ' + m.name + '?', 'Dia tidak bisa masuk lagi ke ruangan ini.', 'KELUARKAN', function () { room.kick(m.uid); });
+    } }, icon('close', 14)));
+    box.append(el);
+  });
+  return box;
+}
+
+function reactionBar(room) {
+  return h('div', { class: 'reacts' }, EMOJIS.map(function (e) { return h('button', { onclick: function () { room.react(e); } }, e); }));
+}
+
+/** Kotak chat: daftar pesan + isian. Mengembalikan elemen yang bisa menyegarkan diri. */
+function chatBox(room, fontSize) {
+  var list = h('div', { class: 'chatlist', style: { fontSize: (fontSize || 16) + 'px' } });
+  var inp = h('input', { placeholder: 'Tulis pesan…', maxlength: 300 });
+  var send = function () { var v = inp.value; if (!v.trim()) return; room.send(v); inp.value = ''; /* keyboard tetap, fokus dipertahankan */ };
+  inp.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') send(); });
+  var box = h('div', { class: 'chatbox' }, list, h('div', { class: 'chatin' }, inp, h('button', { class: 'iconbtn', onclick: function () { send(); inp.focus(); } }, icon('send', 18))));
+  var lastKey = '';
+  var draw = function () {
+    var key = room.chat.length + ':' + (room.chat.length ? room.chat[room.chat.length - 1].id : '');
+    if (key === lastKey) return; lastKey = key;
+    var atEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 40;
+    clear(list);
+    if (!room.chat.length) list.append(h('div', { style: { color: 'var(--subtle)' } }, 'Belum ada pesan. Sapa temanmu!'));
+    room.chat.forEach(function (m) { list.append(h('div', { class: 'msg ' + (m.uid === room.me ? 'me' : 'o') }, h('b', {}, m.name), m.text)); });
+    if (atEnd || true) list.scrollTop = list.scrollHeight;
+  };
+  draw();
+  box.refresh = draw; box.input = inp;
+  return box;
+}
+
+function micAction(room) {
+  if (!room.voiceOn) room.enableVoice(); else room.toggleMic();
+}
+
+/* ---------- Layar Nobar ---------- */
+function nobarScreen(state) {
+  var page = h('div', { class: 'page' });
+  var room = Nobar.room;
+  var rer = state.rerender;
+  page.append(h('div', { class: 'topbar' }, h('button', { class: 'iconbtn', onclick: function () { UI.back(); } }, icon('back', 20)), h('h1', { style: { margin: 0 } }, 'Nonton Bareng')));
+  var film = state.film ? App.find(state.film) : null;
+
+  if (!room) {
+    var wrap = h('div', { class: 'nb-wrap', style: { marginTop: '16px' } });
+    if (film) {
+      wrap.append(h('button', { class: 'opt', onclick: async function () { if (await Nobar.create(film, function () { return App.nickname; })) rer(); else rer(); } },
+        icon('plus', 26), h('div', {}, h('b', {}, 'Buat ruangan untuk "' + film.name + '"'),
+          h('small', {}, 'Kamu jadi host. Ruangan tetap aktif sampai kamu menutupnya. Maks ' + MAX_MEMBERS + ' orang termasuk kamu.'))));
+    }
+    var hist = Nobar.history;
+    if (hist.length) {
+      var hp = h('div', { class: 'panel', style: { maxWidth: 'none' } }, h('h4', {}, 'Ruangan sebelumnya'));
+      hist.forEach(function (x) {
+        hp.append(h('div', { class: 'hist' }, h('div', { class: 'grow' }, h('b', {}, x.filmName || x.filmId), h('small', {}, x.code + (x.host ? ' · kamu host' : ''))),
+          btn('LANJUTKAN', null, true, async function () { await Nobar.join(x.code, function () { return App.nickname; }); rer(); }),
+          h('button', { class: 'iconbtn', title: 'Lupakan', onclick: function () { Nobar.forget(x.code); rer(); } }, icon('close', 16))));
+      });
+      wrap.append(hp);
+    }
+    var code = h('input', { class: 'field', placeholder: 'Kode ruangan (6 karakter)', maxlength: 6, style: { textTransform: 'uppercase', letterSpacing: '4px', fontWeight: '800', fontSize: '18px' } });
+    var go = async function () { await Nobar.join(code.value, function () { return App.nickname; }); rer(); };
+    code.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    wrap.append(h('div', { class: 'panel', style: { maxWidth: 'none' } }, h('h4', {}, 'Gabung dengan kode'), h('p', {}, 'Punya kode dari teman? Masukkan di sini.'), code,
+      h('div', { style: { marginTop: '10px' } }, btn(Nobar.busy ? 'MENYAMBUNG…' : 'GABUNG', null, false, function () { if (!Nobar.busy) go(); }))));
+    if (Nobar.error) wrap.append(h('div', { class: 'err' }, Nobar.error));
+    if (!App.nickname) wrap.append(h('div', { class: 'gold' }, 'Tip: isi nama sapaan di Profil agar temanmu mengenalimu.'));
+    page.append(wrap);
+    return page;
+  }
+
+  /* ---- Lobi ---- */
+  var info = room.info; var f = info ? App.find(info.filmId) : null;
+  var lobby = h('div', { class: 'lobby' });
+  var codeBox = h('div', { class: 'codebox' }, h('div', { class: 'grow' }, h('div', { class: 'code' }, room.code), h('div', { class: 'fn' }, info ? info.filmName : 'Memuat…')),
+    h('button', { class: 'iconbtn', title: 'Salin kode', onclick: function () { navigator.clipboard.writeText(room.code).then(function () { toast('Kode disalin'); }); } }, icon('copy', 18)));
+  lobby.append(codeBox);
+  var offline = h('div', { class: 'gold', style: { fontSize: '12px' } }); lobby.append(offline);
+  var memHost = h('div'); var ctlRow = h('div', { class: 'acts' }); var errRow = h('div', { class: 'err' });
+  lobby.append(h('div', { style: { color: 'var(--muted)', fontSize: '12px', fontWeight: 700 } }, ''), memHost, ctlRow, errRow);
+  var chat = chatBox(room, 16); lobby.append(chat);
+  var warn = h('div', { class: 'gold', style: { fontSize: '12px' } }); lobby.append(warn);
+  var foot = h('div'); lobby.append(foot);
+  var confirmClose = false;
+  var draw = function () {
+    offline.textContent = room.status === 'offline' ? 'Koneksi terputus, mencoba menyambung lagi…' : '';
+    codeBox.querySelector('.fn').textContent = room.info ? room.info.filmName : 'Memuat…';
+    clear(memHost); memHost.append(h('div', { style: { color: 'var(--muted)', fontSize: '12px', fontWeight: 700, marginBottom: '6px' } }, room.members.length + '/' + MAX_MEMBERS + ' bergabung'), memberStrip(room, true));
+    clear(ctlRow);
+    ctlRow.append(chip(!room.voiceOn ? 'Nyalakan suara' : room.micOn ? 'Mik aktif' : 'Mik mati', room.voiceOn && room.micOn, function () { micAction(room); }));
+    if (room.voiceOn) ctlRow.append(chip('Matikan suara', false, function () { room.disableVoice(); }));
+    if (room.isHost) ctlRow.append(chip(room.info && room.info.ctl === 'all' ? 'Semua boleh kendali: ya' : 'Semua boleh kendali: tidak', room.info && room.info.ctl === 'all', function () { room.setControl(!(room.info && room.info.ctl === 'all')); }));
+    else ctlRow.append(h('span', { style: { color: 'var(--subtle)', fontSize: '12px', alignSelf: 'center' } }, room.info && room.info.ctl === 'all' ? 'Semua boleh mengendalikan' : 'Hanya host yang mengendalikan'));
+    errRow.textContent = room.voiceError || '';
+    var cur = room.info ? App.find(room.info.filmId) : null;
+    warn.textContent = room.info && !cur ? 'Film ini perlu fitur Adults/Extraordinary yang aktif di profilmu. Aktifkan dulu di Profil untuk ikut menonton; chat dan suara tetap jalan.' : '';
+    clear(foot);
+    if (confirmClose) {
+      foot.append(h('div', { class: 'gold', style: { fontSize: '12px', marginBottom: '6px' } }, 'Tutup ruangan untuk semua orang? Ruangan tidak bisa dibuka lagi.'),
+        h('div', { class: 'acts' }, btn('BATAL', null, false, function () { confirmClose = false; draw(); }), btn('YA, TUTUP', null, true, function () { Nobar.close(); rer(); })));
+    } else {
+      foot.append(h('div', { class: 'acts' }, btn('KELUAR', null, false, function () { Nobar.leave(); rer(); }),
+        btn(room.isHost ? 'TONTON' : 'IKUT TONTON', 'play', !!cur, function () { if (cur) UI.watchRoom(cur); })));
+      if (room.isHost) foot.append(h('a', { style: { color: 'var(--muted)', fontSize: '12px', cursor: 'pointer', display: 'inline-block', marginTop: '10px' }, onclick: function () { confirmClose = true; draw(); } }, 'Tutup ruangan'));
+      else foot.append(h('div', { style: { color: 'var(--subtle)', fontSize: '12px', marginTop: '8px' } }, 'Keluar tidak menutup ruangan. Kamu bisa lanjut lagi dari Nobar.'));
+    }
+  };
+  draw();
+  state.disposers.push(room.on(function () { if (room.status === 'closed') { rer(); return; } draw(); chat.refresh(); }));
+  page.append(lobby);
+  return page;
+}
