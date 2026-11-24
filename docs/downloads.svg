@@ -1,45 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="330" viewBox="0 0 760 330" font-family="Segoe UI,Helvetica,Arial,sans-serif">
-<rect width="760" height="330" rx="18" fill="#07131F"/>
-<text x="28" y="40" fill="#FFFFFF" font-size="20" font-weight="700">Unduhan Aphodius per versi</text>
-<text x="28" y="62" fill="#8FA6B8" font-size="13">Total 31 unduhan • diperbarui otomatis</text>
-<line x1="56" y1="284.0" x2="740" y2="284.0" stroke="#16314A" stroke-width="1"/>
-<text x="46" y="288.0" fill="#8FA6B8" font-size="11" text-anchor="end">0</text>
-<line x1="56" y1="232.5" x2="740" y2="232.5" stroke="#16314A" stroke-width="1"/>
-<text x="46" y="236.5" fill="#8FA6B8" font-size="11" text-anchor="end">2</text>
-<line x1="56" y1="181.0" x2="740" y2="181.0" stroke="#16314A" stroke-width="1"/>
-<text x="46" y="185.0" fill="#8FA6B8" font-size="11" text-anchor="end">4</text>
-<line x1="56" y1="129.5" x2="740" y2="129.5" stroke="#16314A" stroke-width="1"/>
-<text x="46" y="133.5" fill="#8FA6B8" font-size="11" text-anchor="end">6</text>
-<line x1="56" y1="78.0" x2="740" y2="78.0" stroke="#16314A" stroke-width="1"/>
-<text x="46" y="82.0" fill="#8FA6B8" font-size="11" text-anchor="end">8</text>
-<rect x="68.1" y="232.5" width="43.1" height="51.5" rx="5" fill="#22C7EC"/>
-<text x="89.7" y="225.5" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">2</text>
-<text x="89.7" y="304" fill="#8FA6B8" font-size="11" text-anchor="middle">v1.0.0</text>
-<rect x="135.5" y="206.8" width="43.1" height="77.2" rx="5" fill="#22C7EC"/>
-<text x="157.1" y="199.8" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">3</text>
-<text x="157.1" y="304" fill="#8FA6B8" font-size="11" text-anchor="middle">v1.0.1</text>
-<rect x="202.9" y="103.8" width="43.1" height="180.2" rx="5" fill="#22C7EC"/>
-<text x="224.5" y="96.8" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">7</text>
-<text x="224.5" y="304" fill="#8FA6B8" font-size="11" text-anchor="middle">v1.1.0</text>
-<rect x="270.3" y="206.8" width="43.1" height="77.2" rx="5" fill="#22C7EC"/>
-<text x="291.9" y="199.8" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">3</text>
-<text x="291.9" y="304" fill="#8FA6B8" font-size="11" text-anchor="middle">v1.2.0</text>
-<rect x="337.7" y="206.8" width="43.1" height="77.2" rx="5" fill="#22C7EC"/>
-<text x="359.3" y="199.8" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">3</text>
-<text x="359.3" y="304" fill="#8FA6B8" font-size="11" text-anchor="middle">v1.2.1</text>
-<rect x="405.1" y="206.8" width="43.1" height="77.2" rx="5" fill="#22C7EC"/>
-<text x="426.7" y="199.8" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">3</text>
-<text x="426.7" y="304" fill="#8FA6B8" font-size="11" text-anchor="middle">v1.3.0</text>
-<rect x="472.5" y="232.5" width="43.1" height="51.5" rx="5" fill="#22C7EC"/>
-<text x="494.1" y="225.5" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">2</text>
-<text x="494.1" y="304" fill="#8FA6B8" font-size="11" text-anchor="middle">v1.3.1</text>
-<rect x="539.9" y="232.5" width="43.1" height="51.5" rx="5" fill="#22C7EC"/>
-<text x="561.5" y="225.5" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">2</text>
-<text x="561.5" y="304" fill="#8FA6B8" font-size="11" text-anchor="middle">v1.4.0</text>
-<rect x="607.3" y="181.0" width="43.1" height="103.0" rx="5" fill="#22C7EC"/>
-<text x="628.9" y="174.0" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">4</text>
-<text x="628.9" y="304" fill="#8FA6B8" font-size="11" text-anchor="middle">v1.5.0</text>
-<rect x="674.7" y="232.5" width="43.1" height="51.5" rx="5" fill="#22C7EC"/>
-<text x="696.3" y="225.5" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">2</text>
-<text x="696.3" y="304" fill="#8FA6B8" font-size="11" text-anchor="middle">v1.6.0</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="340" viewBox="0 0 760 340">
+  <defs>
+    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#22C7EC" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="#22C7EC" stop-opacity="0.0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="760" height="340" rx="14" fill="#0F172A" stroke="#1E293B" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <text x="70" y="30" fill="#F8FAFC" font-size="15" font-weight="700" font-family="system-ui, -apple-system, sans-serif">Total Unduhan Aphodius dari Waktu ke Waktu</text>
+  <text x="724" y="30" text-anchor="end" fill="#22C7EC" font-size="13" font-weight="600" font-family="system-ui, -apple-system, sans-serif">Total: 0 (2026-11-24)</text>
+
+  <!-- Grid & Y-Axis -->
+  <line x1="70" y1="284.0" x2="724" y2="284.0" stroke="#2A3242" stroke-width="1" stroke-dasharray="4 4"/><text x="60" y="288.0" text-anchor="end" fill="#94A3B8" font-size="11" font-family="system-ui, -apple-system, sans-serif">0</text><line x1="70" y1="227.0" x2="724" y2="227.0" stroke="#2A3242" stroke-width="1" stroke-dasharray="4 4"/><text x="60" y="231.0" text-anchor="end" fill="#94A3B8" font-size="11" font-family="system-ui, -apple-system, sans-serif">3</text><line x1="70" y1="170.0" x2="724" y2="170.0" stroke="#2A3242" stroke-width="1" stroke-dasharray="4 4"/><text x="60" y="174.0" text-anchor="end" fill="#94A3B8" font-size="11" font-family="system-ui, -apple-system, sans-serif">6</text><line x1="70" y1="113.0" x2="724" y2="113.0" stroke="#2A3242" stroke-width="1" stroke-dasharray="4 4"/><text x="60" y="117.0" text-anchor="end" fill="#94A3B8" font-size="11" font-family="system-ui, -apple-system, sans-serif">9</text><line x1="70" y1="56.0" x2="724" y2="56.0" stroke="#2A3242" stroke-width="1" stroke-dasharray="4 4"/><text x="60" y="60.0" text-anchor="end" fill="#94A3B8" font-size="11" font-family="system-ui, -apple-system, sans-serif">12</text>
+
+  <!-- Axes Lines -->
+  <line x1="70" y1="56" x2="70" y2="284" stroke="#334155" stroke-width="1.5"/>
+  <line x1="70" y1="284" x2="724" y2="284" stroke="#334155" stroke-width="1.5"/>
+
+  <!-- Area & Line -->
+  <path d="M 70,284 L 397.0,284.0 L 724,284.0 L 724,284 Z" fill="url(#areaGrad)"/>
+  <polyline fill="none" stroke="#22C7EC" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="70,284.0 724,284.0"/>
+
+  <!-- Data Points -->
+  <circle cx="397.0" cy="284.0" r="5" fill="#F2A33A" stroke="#0F172A" stroke-width="2"/><text x="397.0" y="272.0" text-anchor="middle" fill="#F8FAFC" font-size="12" font-weight="700" font-family="system-ui, -apple-system, sans-serif">0</text>
+
+  <!-- X-Axis Labels -->
+  <text x="397.0" y="306" text-anchor="middle" fill="#94A3B8" font-size="11" font-family="system-ui, -apple-system, sans-serif">11-24</text>
+
+  <!-- Axis Titles -->
+  <text x="397.0" y="328" text-anchor="middle" fill="#64748B" font-size="11" font-family="system-ui, -apple-system, sans-serif">Tanggal (UTC)</text>
+  <text x="18" y="170.0" text-anchor="middle" fill="#64748B" font-size="11" font-family="system-ui, -apple-system, sans-serif" transform="rotate(-90 18 170.0)">Total Unduhan</text>
 </svg>
