@@ -103,8 +103,6 @@ jobs:
           UninstallDisplayIcon={app}\Aphodius.exe
           WizardStyle=modern
           DisableProgramGroupPage=yes
-          [Languages]
-          Name: "id"; MessagesFile: "compiler:Languages\Indonesian.isl"
           [Tasks]
           Name: "desktopicon"; Description: "Buat ikon di Desktop"; Flags: unchecked
           [Files]
