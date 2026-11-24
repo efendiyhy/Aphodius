@@ -68,19 +68,70 @@ jobs:
           4. Bila muncul peringatan "Windows protected your PC", klik "More info" lalu "Run anyway".
              Peringatan ini muncul karena aplikasi belum bertanda tangan digital.
 
-          Pintasan di pemutar: Spasi putar/jeda, panah kiri/kanan lompat, panah atas/bawah volume,
-          F layar penuh, M bisu, C chat nobar, Esc kembali.
+          Pintasan di pemutar: Spasi putar/jeda, panah kiri/kanan lompat, J/L lompat 10 detik,
+          panah atas/bawah volume, F layar penuh, M bisu, P gambar-dalam-gambar, S subtitle,
+          N berikutnya, < > kecepatan, 0-9 loncat ke persen, C chat nobar, / cari, F11 layar penuh, Esc kembali.
+
+          Link undangan nobar (aphodius://join/KODE): buka Profil > Windows > Daftarkan, atau pakai
+          installer Aphodius-setup-*.exe yang mendaftarkannya otomatis.
           TXT
           ZIP="Aphodius-windows-${{ steps.ver.outputs.name }}.zip"
           cd stage && powershell -NoProfile -Command "Compress-Archive -Path Aphodius -DestinationPath ../$ZIP -CompressionLevel Optimal" && cd ..
           ls -la "$ZIP"
           echo "ZIP=windows/$ZIP" >> "$GITHUB_ENV"
 
+      - name: Buat installer (.exe)
+        working-directory: windows
+        run: |
+          choco install innosetup -y --no-progress > /dev/null
+          SRC="$(cygpath -w "$PWD/stage/Aphodius")"
+          OUTD="$(cygpath -w "$PWD")"
+          cat > setup.iss <<ISS
+          [Setup]
+          AppId={{6F1B8F2A-4C0E-4B7E-9E55-A9D0D3E1A0F1}
+          AppName=Aphodius
+          AppVersion=${{ steps.ver.outputs.name }}
+          AppPublisher=Sengkuni
+          DefaultDirName={localappdata}\Programs\Aphodius
+          DefaultGroupName=Aphodius
+          PrivilegesRequired=lowest
+          OutputDir=$OUTD
+          OutputBaseFilename=Aphodius-setup-${{ steps.ver.outputs.name }}
+          Compression=lzma2
+          SolidCompression=yes
+          SetupIconFile=$OUTD\icon.ico
+          UninstallDisplayIcon={app}\Aphodius.exe
+          WizardStyle=modern
+          DisableProgramGroupPage=yes
+          [Languages]
+          Name: "id"; MessagesFile: "compiler:Languages\Indonesian.isl"
+          [Tasks]
+          Name: "desktopicon"; Description: "Buat ikon di Desktop"; Flags: unchecked
+          [Files]
+          Source: "$SRC\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; Excludes: "AphodiusData\*"
+          [Icons]
+          Name: "{autoprograms}\Aphodius"; Filename: "{app}\Aphodius.exe"
+          Name: "{autodesktop}\Aphodius"; Filename: "{app}\Aphodius.exe"; Tasks: desktopicon
+          [Registry]
+          Root: HKCU; Subkey: "Software\Classes\aphodius"; ValueType: string; ValueData: "URL:Aphodius"; Flags: uninsdeletekey
+          Root: HKCU; Subkey: "Software\Classes\aphodius"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+          Root: HKCU; Subkey: "Software\Classes\aphodius\shell\open\command"; ValueType: string; ValueData: """{app}\Aphodius.exe"" ""%1"""
+          [Run]
+          Filename: "{app}\Aphodius.exe"; Description: "Jalankan Aphodius"; Flags: nowait postinstall skipifsilent
+          ISS
+          sed -i 's/^          //' setup.iss
+          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" setup.iss
+          SETUP="Aphodius-setup-${{ steps.ver.outputs.name }}.exe"
+          ls -la "$SETUP"
+          echo "SETUP=windows/$SETUP" >> "$GITHUB_ENV"
+
       - name: Unggah artefak
         uses: actions/upload-artifact@v4
         with:
           name: Aphodius-windows
-          path: ${{ env.ZIP }}
+          path: |
+            ${{ env.ZIP }}
+            ${{ env.SETUP }}
 
       # Pada main: pasang ke rilis v<versi> (dibuat oleh workflow Build & Release; bila belum ada, tunggu lalu buat sendiri)
       - name: Pasang ke GitHub Release
@@ -96,5 +147,5 @@ jobs:
           if ! gh release view "$TAG" > /dev/null 2>&1; then
             gh release create "$TAG" --target "${{ github.sha }}" --title "Aphodius ${{ steps.ver.outputs.name }}" --generate-notes
           fi
-          gh release upload "$TAG" "$ZIP" --clobber
+          gh release upload "$TAG" "$ZIP" "$SETUP" --clobber
           gh release view "$TAG" --json assets -q '.assets[].name'

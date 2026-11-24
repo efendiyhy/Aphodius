@@ -9,9 +9,14 @@ function memberStrip(room, canKick) {
     var st = room.peerState[m.uid];
     var isHost = room.info && room.info.host === m.uid;
     var status = m.buf ? 'menunggu' : 'siap';
-    var el = h('div', { class: 'mem' }, avatar(m.name, 28),
+    var el = h('div', { class: 'mem' + (room.speaking && room.speaking[m.uid] ? ' speaking' : '') }, avatar(m.name, 28),
       h('div', {}, h('div', {}, m.name + (m.uid === room.me ? ' (kamu)' : '') + (isHost ? ' ★' : '')),
         h('div', { class: 'st ' + (m.buf ? 'wait' : 'ok') }, status + (m.voice ? (m.mic ? ' · 🎙' : ' · 🔇') : '') + (st && m.voice && m.uid !== room.me ? ' · ' + st : ''))));
+    if (m.uid !== room.me && m.voice && room.voice) {
+      var vr = h('input', { type: 'range', min: 0, max: 100, class: 'vol pv', title: 'Volume suara ' + m.name, value: Math.round(room.voice.getVol(m.uid) * 100) });
+      vr.addEventListener('input', function () { room.voice.setVol(m.uid, vr.value / 100); });
+      el.append(vr);
+    }
     if (canKick && room.isHost && m.uid !== room.me) el.append(h('button', { title: 'Keluarkan', onclick: function () {
       confirmBox('Keluarkan ' + m.name + '?', 'Dia tidak bisa masuk lagi ke ruangan ini.', 'KELUARKAN', function () { room.kick(m.uid); });
     } }, icon('close', 14)));
@@ -75,8 +80,8 @@ function nobarScreen(state) {
       });
       wrap.append(hp);
     }
-    var code = h('input', { class: 'field', placeholder: 'Kode ruangan (6 karakter)', maxlength: 6, style: { textTransform: 'uppercase', letterSpacing: '4px', fontWeight: '800', fontSize: '18px' } });
-    var go = async function () { await Nobar.join(code.value, function () { return App.nickname; }); rer(); };
+    var code = h('input', { class: 'field', placeholder: 'Kode ruangan (6 karakter)', maxlength: 40, style: { textTransform: 'uppercase', letterSpacing: '4px', fontWeight: '800', fontSize: '18px' } });
+    var go = async function () { var m = /join\/([A-Za-z0-9]{6})/i.exec(code.value); await Nobar.join(m ? m[1] : code.value, function () { return App.nickname; }); rer(); };
     code.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
     wrap.append(h('div', { class: 'panel', style: { maxWidth: 'none' } }, h('h4', {}, 'Gabung dengan kode'), h('p', {}, 'Punya kode dari teman? Masukkan di sini.'), code,
       h('div', { style: { marginTop: '10px' } }, btn(Nobar.busy ? 'MENYAMBUNG…' : 'GABUNG', null, false, function () { if (!Nobar.busy) go(); }))));
@@ -90,7 +95,11 @@ function nobarScreen(state) {
   var info = room.info; var f = info ? App.find(info.filmId) : null;
   var lobby = h('div', { class: 'lobby' });
   var codeBox = h('div', { class: 'codebox' }, h('div', { class: 'grow' }, h('div', { class: 'code' }, room.code), h('div', { class: 'fn' }, info ? info.filmName : 'Memuat…')),
-    h('button', { class: 'iconbtn', title: 'Salin kode', onclick: function () { navigator.clipboard.writeText(room.code).then(function () { toast('Kode disalin'); }); } }, icon('copy', 18)));
+    h('button', { class: 'iconbtn', title: 'Salin kode', onclick: function () { navigator.clipboard.writeText(room.code).then(function () { toast('Kode disalin'); }); } }, icon('copy', 18)),
+    h('button', { class: 'iconbtn', title: 'Bagikan undangan', onclick: function () {
+      var t = 'Ayo nobar "' + (room.info ? room.info.filmName : '') + '" bareng di Aphodius!\nKode ruangan: ' + room.code + '\nBuka link: aphodius://join/' + room.code + '\n(atau Aphodius > Nobar > Gabung dengan kode)';
+      navigator.clipboard.writeText(t).then(function () { toast('Undangan disalin. Tempel ke WhatsApp/Telegram', 3500); });
+    } }, icon('send', 18)));
   lobby.append(codeBox);
   var offline = h('div', { class: 'gold', style: { fontSize: '12px' } }); lobby.append(offline);
   var memHost = h('div'); var ctlRow = h('div', { class: 'acts' }); var errRow = h('div', { class: 'err' });

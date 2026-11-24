@@ -233,7 +233,11 @@ NobarRoom.prototype = {
     var lastC = this.chat.length ? this.chat[this.chat.length - 1].id : null;
     var lastR = this.reactions.length ? this.reactions[this.reactions.length - 1].id : null;
     var newReact = rs.length && rs[rs.length - 1].id !== lastR;
-    if (cs.length !== this.chat.length || (cs.length && cs[cs.length - 1].id !== lastC)) this.chat = cs;
+    if (cs.length !== this.chat.length || (cs.length && cs[cs.length - 1].id !== lastC)) {
+      var nm = cs.length ? cs[cs.length - 1] : null;
+      if (lastC !== null && nm && nm.uid !== this.me && window.notifyChat) window.notifyChat({ nick: nm.name, text: nm.text });
+      this.chat = cs;
+    }
     if (newReact) this.reactions = rs.slice(-20);
     if (!this.isHost && r.kick && r.kick[this.me] && !this.kicked) {
       this.kicked = true; this.end('Kamu dikeluarkan oleh host'); return;
@@ -334,6 +338,26 @@ VoiceEngine.prototype = {
     var room = this.room, self = this;
     current.filter(function (m) { return m.uid !== room.me && m.voice; }).forEach(function (m) { self.connect(m.uid); });
   },
+  getVol: function (uid) { try { var v = JSON.parse(localStorage.getItem('aph.pvol') || '{}')[uid]; return v == null ? 1 : v; } catch (e) { return 1; } },
+  setVol: function (uid, v) {
+    try { var o = JSON.parse(localStorage.getItem('aph.pvol') || '{}'); o[uid] = v; localStorage.setItem('aph.pvol', JSON.stringify(o)); } catch (e) {}
+    if (this.audios[uid]) this.audios[uid].volume = v;
+  },
+  /** Pantau tingkat suara tiap lawan bicara untuk indikator "sedang bicara". */
+  watch: function (uid, stream) {
+    var self = this, room = this.room;
+    try {
+      if (!this.actx) this.actx = new (window.AudioContext || window.webkitAudioContext)();
+      var src = this.actx.createMediaStreamSource(stream), an = this.actx.createAnalyser(); an.fftSize = 256; src.connect(an);
+      var buf = new Uint8Array(an.fftSize); this.meters = this.meters || {};
+      if (this.meters[uid]) clearInterval(this.meters[uid]);
+      this.meters[uid] = setInterval(function () {
+        an.getByteTimeDomainData(buf); var mx = 0; for (var i = 0; i < buf.length; i++) mx = Math.max(mx, Math.abs(buf[i] - 128));
+        var sp = mx > 8; room.speaking = room.speaking || {};
+        if (!!room.speaking[uid] !== sp) { room.speaking[uid] = sp; room.emit(); }
+      }, 200);
+    } catch (e) { /* tanpa indikator */ }
+  },
   setMic: function (on) { if (this.stream) this.stream.getAudioTracks().forEach(function (t) { t.enabled = on; }); },
   newPc: function (uid) {
     var self = this, room = this.room;
@@ -349,7 +373,10 @@ VoiceEngine.prototype = {
       var a = self.audios[uid];
       if (!a) { a = new Audio(); a.autoplay = true; self.audios[uid] = a; }
       a.srcObject = e.streams[0] || new MediaStream([e.track]);
+      a.volume = self.getVol(uid);
+      if (window.App && App.outDev && a.setSinkId) a.setSinkId(App.outDev).catch(function () {});
       a.play().catch(function () {});
+      self.watch(uid, a.srcObject);
     };
     pc.onconnectionstatechange = function () {
       var s = pc.connectionState;
@@ -415,6 +442,9 @@ VoiceEngine.prototype = {
     this.audios = {};
     if (this.stream) this.stream.getTracks().forEach(function (t) { t.stop(); });
     this.stream = null;
+    if (this.meters) Object.keys(this.meters).forEach(function (k) { clearInterval(self.meters[k]); }); this.meters = {};
+    if (this.actx) { try { this.actx.close(); } catch (e) {} this.actx = null; }
+    if (this.room) this.room.speaking = {};
   },
 };
 

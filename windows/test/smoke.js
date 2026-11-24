@@ -90,7 +90,7 @@ app.whenReady().then(async () => {
     if (/firebasedatabase\.app/.test(u)) return cb({ cancel: true });
     cb({});
   });
-  ipcMain.handle('open', () => {}); ipcMain.handle('meta', () => ({ version: '1.10.0', portable: false, data: '' }));
+  ipcMain.handle('open', () => {}); ipcMain.handle('zoom', () => {}); ipcMain.handle('fullscreen', () => {}); ipcMain.handle('proto', () => true); ipcMain.handle('log:read', () => ''); ipcMain.handle('log:show', () => {}); ipcMain.handle('cache:clear', () => true); ipcMain.handle('dl:exists', () => null); ipcMain.handle('dl:folder', () => {}); ipcMain.handle('dl:cancel', () => {}); ipcMain.handle('dl:remove', () => true); ipcMain.handle('upd:start', () => ({ ok: false, error: 'uji' })); ipcMain.on('log', (e, l) => console.log('     [log] ' + l)); ipcMain.on('state', (e, st) => { global.__state = st; }); ipcMain.on('cfg', () => {}); ipcMain.on('invite-ready', () => {}); ipcMain.handle('meta', () => ({ version: '1.10.0', portable: false, data: '' }));
   const win = new BrowserWindow({ width: 1280, height: 780, show: true, webPreferences: { preload: path.join(__dirname, '..', 'preload.js'), contextIsolation: true, webSecurity: false } });
   win.webContents.on('console-message', (e, level, msg, line, src) => { if (level >= 2) errors.push(`[${level}] ${msg} (${path.basename(src)}:${line})`); });
   const ev = (code) => win.webContents.executeJavaScript(code, true);
@@ -249,6 +249,66 @@ app.whenReady().then(async () => {
     await wait(600); if ((await ev('Nobar.room.members.length')) !== 2) throw new Error('anggota tidak 2');
     setAt(`rooms/${c}`, null); await wait(800);
     if (await ev(`Nobar.room&&Nobar.room.status`) !== 'closed' && await ev(`!!Nobar.room`)) throw new Error('tidak menutup saat host menghapus ruangan');
+  });
+
+  await step('pemutar: slider volume & buka bisu saat volume 0', async () => {
+    await ev(`Nobar.room && Nobar.leave(); State.stack=[]; State.tab='home'; render(); Store.set('vol', 0.05); UI.play(App.find('f2'),{fromStart:true})`); await wait(3000);
+    const r = await evp(`var v=document.querySelector('.player video'); var sl=document.querySelector('.player input.vol'); if(!sl) return 'tak ada slider'; v.muted=true; v.volume=0; v.dispatchEvent(new Event('volumechange')); await new Promise(r=>setTimeout(r,200)); var mb=document.querySelector('.player .pbtn'); var all=[...document.querySelectorAll('.player .pbtn')]; return JSON.stringify({vol:v.volume, muted:v.muted, saved:Store.get('vol',1)})`);
+    if (/tak ada/.test(r)) throw new Error(r);
+    const j = JSON.parse(r); if (j.saved < 0.2 && j.saved !== 0.05) throw new Error('vol tersimpan ' + r);
+    const v2 = await evp(`var v=document.querySelector('.player video'); v.muted=true; v.volume=0; var btns=[...document.querySelectorAll('.player .pbtn')]; var m=btns.find(b=>b.nextElementSibling&&b.nextElementSibling.classList.contains('vol')); m.click(); await new Promise(r=>setTimeout(r,150)); return {m:v.muted, v:v.volume}`);
+    if (v2.m || v2.v < 0.05) throw new Error('bisu tidak terbuka: ' + JSON.stringify(v2));
+  });
+  await step('pemutar: volume awal minimal 20%', async () => {
+    const v = await ev(`Math.round(document.querySelector('.player video').volume*100)`); if (v < 20) throw new Error('volume awal ' + v);
+  });
+  await step('pemutar: subtitle .srt tampil sesuai waktu', async () => {
+    const r = await evp(`var v=document.querySelector('.player video'); var st=document.querySelector('.player .stage'); var dt=new DataTransfer(); dt.items.add(new File(['1\\n00:00:00,000 --> 00:00:30,000\\nHalo dunia <i>uji</i>\\n\\n2\\n00:00:40,000 --> 00:00:50,000\\nTidak tampil\\n'],'a.srt')); st.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true})); await new Promise(r=>setTimeout(r,400)); v.currentTime=1; await new Promise(r=>setTimeout(r,500)); return document.querySelector('.player .subs').textContent`);
+    if (r !== 'Halo dunia uji') throw new Error('subtitle: ' + JSON.stringify(r));
+  });
+  await step('pemutar: tombol media melapor ke proses utama', async () => {
+    await ev(`document.querySelector('.player video').play()`); await wait(500);
+    if (!global.__state || global.__state.title !== 'Drama Malam') throw new Error('state: ' + JSON.stringify(global.__state));
+  });
+  await step('pemutar: lewati intro hanya untuk series (tanda per series)', async () => {
+    await ev(`App.setIntro('s1',[0,20]); UI.back&&0; Player.cur.destroy(); State.stack=[]; render(); UI.play(App.find('s1'),{ep:0,fromStart:true})`); await wait(3500);
+    const shown = await ev(`getComputedStyle(document.querySelector('.player .skipintro')).display`);
+    if (shown !== 'block') throw new Error('tombol intro ' + shown);
+    await ev(`document.querySelector('.player .skipintro').click()`); await wait(400);
+    if (!(await ev(`document.querySelector('.player video').currentTime`) >= 19)) throw new Error('tidak melompat');
+  });
+  await step('pemutar: berikutnya otomatis (hitung mundur) pada episode', async () => {
+    await ev(`var v=document.querySelector('.player video'); v.currentTime=Math.max(0,v.duration-0.3)`); await wait(2500);
+    const box = await ev(`!!document.querySelector('.player .nextbox')`); if (!box) throw new Error('kotak berikutnya tidak tampil');
+    await ev(`[...document.querySelectorAll('.nextbox button')][0].click()`); await wait(3500);
+    if (!/Ep 2/.test(await ev(`document.title`))) throw new Error('belum pindah ke ep 2: ' + await ev('document.title'));
+    await ev(`Player.cur.destroy(); State.stack=[]; render()`);
+  });
+  await step('antrean: tambah, urut, putar dari antrean', async () => {
+    await ev(`App.enqueue('f3'); App.enqueue('f1'); App.moveQueue(1,-1)`);
+    if ((await ev(`JSON.stringify(App.queue)`)) !== '["f1","f3"]') throw new Error('urutan ' + await ev('JSON.stringify(App.queue)'));
+    await ev(`UI.go({t:'queue'})`); await wait(300);
+    if (!/Antrean tonton/.test(await ev(`document.body.innerText`))) throw new Error('layar antrean tidak tampil');
+    await ev(`UI.back(); UI.play(App.find('f2'),{fromStart:true})`); await wait(2500);
+    if ((await ev(`!!Player.cur`)) !== true) throw new Error('tidak memutar');
+    if ((await ev(`(function(){ var n=queueNext(null); return n&&n.id })()`)) !== 'f1') throw new Error('queueNext');
+    await ev(`Player.cur.destroy(); State.stack=[]; render(); App.dequeue('f1'); App.dequeue('f3')`);
+  });
+  await step('undangan: link aphodius://join masuk otomatis', async () => {
+    setAt('rooms/INV234', { info: { host: 'uidH', film: 'f1', filmName: 'Petualangan Pertama', created: Date.now(), ctl: 'host' }, pb: { playing: false, pos: 0, at: Date.now(), seq: 0, by: 'uidH' }, members: { uidH: { name: 'Host', seen: Date.now(), voice: false, mic: false } } });
+    await ev(`joinInvite('inv234')`); await wait(1500);
+    if ((await ev(`Nobar.room && Nobar.room.code`)) !== 'INV234') throw new Error('tidak bergabung: ' + await ev('Nobar.error'));
+    await ev(`Nobar.leave(); State.stack=[]; render()`);
+  });
+  await step('mode TV & hemat memori menyalakan kelas', async () => {
+    await ev(`App.set('tvMode', true); applyMode()`); if (!(await ev(`document.body.classList.contains('tv')`))) throw new Error('tv');
+    await ev(`App.set('tvMode', false); App.set('saver', true); applyMode()`); if (!(await ev(`document.body.classList.contains('saver')`))) throw new Error('saver');
+    await ev(`App.set('saver', false); applyMode()`);
+  });
+  await step('profil: bagian Windows, antrean & unduhan, pembaruan', async () => {
+    await ev(`State.stack=[]; State.tab='profile'; render()`); await wait(400);
+    const t = await ev(`document.body.innerText`);
+    for (const w of ['Tetap di baki', 'Mode TV', 'Hemat memori', 'Bersihkan cache', 'Antrean & Unduhan']) if (t.indexOf(w) < 0) throw new Error('hilang: ' + w);
   });
   await step('EQ/Bioskop tidak error', async () => { await ev(`App.set('surround', true)`); });
   await step('mikrofon WebRTC tersedia', async () => { const r = await ev(`navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{var n=s.getAudioTracks().length; s.getTracks().forEach(t=>t.stop()); return n;}).catch(e=>'err '+e.name)`); if (r !== 1) throw new Error('getUserMedia: ' + r); });

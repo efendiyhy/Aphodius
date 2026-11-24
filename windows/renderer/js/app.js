@@ -12,15 +12,21 @@ UI.openFilm = function (f) { UI.go({ t: 'detail', id: f.id }); };
 UI.play = function (f, o) { startPlayback(f, o || {}); };
 UI.watchRoom = function (f) { startPlayback(f, {}, Nobar.room); };
 
+function queueNext(room) {
+  if (room) return null;
+  for (var i = 0; i < App.queue.length; i++) { var f = App.byId(App.queue[i]); if (f) return f; }
+  return null;
+}
 function startPlayback(f, o, room) {
   var back = function () { render(); };
+  var viaQueue = function (n) { App.dequeue(n.id); startPlayback(n, { fromStart: true }); };
   if (isSeries(f)) {
     var play = function (i) {
       var ef = App.epFilm(f, i);
       Player.open({
-        film: ef, room: room, fromStart: o.fromStart, onBack: back,
-        next: function () { return i + 1 < f.episodes.length ? App.epFilm(f, i + 1) : null; },
-        onNext: function () { play(i + 1); },
+        film: ef, room: room, fromStart: o.fromStart, onBack: back, auto: !room,
+        next: function () { return i + 1 < f.episodes.length ? App.epFilm(f, i + 1) : queueNext(room); },
+        onNext: function (n) { if (n.id.indexOf(f.id + '#') === 0) play(i + 1); else viaQueue(n); },
       });
     };
     var idx = o.ep != null ? o.ep : App.resumeEp(f);
@@ -29,9 +35,9 @@ function startPlayback(f, o, room) {
   }
   var run = function (film, fromStart) {
     Player.open({
-      film: film, room: room, fromStart: fromStart, onBack: back,
-      next: function () { return room ? null : App.nextFor(film); },
-      onNext: function (n) { run(n, true); },
+      film: film, room: room, fromStart: fromStart, onBack: back, auto: !room,
+      next: function () { return room ? null : (queueNext(room) || App.nextFor(film)); },
+      onNext: function (n) { if (App.queue.indexOf(n.id) >= 0) viaQueue(n); else run(n, true); },
     });
   };
   run(f, !!o.fromStart);
@@ -62,6 +68,7 @@ function screenFor(r) {
     case 'profile': return profileScreen(State);
     case 'history': return historyScreen(State);
     case 'nobar': return nobarScreen(State);
+    case 'queue': return queueScreen(State);
   }
   return h('div');
 }
@@ -87,7 +94,7 @@ function render() {
     var n = h('div', { class: 'note' }, App.refreshNote); document.body.append(n); App.refreshNote = ''; setTimeout(function () { n.remove(); }, 3500);
   }
 }
-var AUTO = { home: 1, new: 1, movie: 1, series: 1, mylist: 1, extra: 1, detail: 1, history: 1 };
+var AUTO = { home: 1, new: 1, movie: 1, series: 1, mylist: 1, extra: 1, detail: 1, history: 1, queue: 1 };
 App.on(function () {
   cancelAnimationFrame(renderQ);
   renderQ = requestAnimationFrame(function () { if (!State.locked && AUTO[route().t] && !Player.cur) render(); else if (App.refreshNote) { var n = h('div', { class: 'note' }, App.refreshNote); document.body.append(n); App.refreshNote = ''; setTimeout(function () { n.remove(); }, 3500); } });
@@ -129,15 +136,69 @@ function welcome(done) {
   setTimeout(function () { inp.focus(); }, 50);
 }
 
+/* ---- mode TV / hemat memori ---- */
+function applyMode() {
+  document.body.classList.toggle('tv', !!App.tvMode);
+  document.body.classList.toggle('saver', !!App.saver);
+  if (window.aph) aph.zoom(App.tvMode ? 1.35 : 1);
+}
+/* ---- navigasi panah (mode TV) ---- */
+function tvNav(e) {
+  if (!App.tvMode || Player.cur || lockEl || /INPUT|TEXTAREA/.test((e.target || {}).tagName || '')) return;
+  var dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!dir) return;
+  var els = Array.prototype.slice.call(document.querySelectorAll('button, .poster, a, input, [tabindex]')).filter(function (x) { var r = x.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight; });
+  var cur = document.activeElement && els.indexOf(document.activeElement) >= 0 ? document.activeElement : null;
+  if (!cur) { if (els[0]) { els[0].focus(); e.preventDefault(); } return; }
+  var c = cur.getBoundingClientRect(), cx = c.left + c.width / 2, cy = c.top + c.height / 2, best = null, bs = 1e9;
+  els.forEach(function (x) {
+    if (x === cur) return; var r = x.getBoundingClientRect(), dx = r.left + r.width / 2 - cx, dy = r.top + r.height / 2 - cy;
+    var along = dx * dir[0] + dy * dir[1]; if (along <= 4) return;
+    var side = Math.abs(dx * dir[1]) + Math.abs(dy * dir[0]); var sc = along + side * 2;
+    if (sc < bs) { bs = sc; best = x; }
+  });
+  if (best) { best.focus(); best.scrollIntoView({ block: 'nearest', inline: 'nearest' }); e.preventDefault(); }
+}
+document.addEventListener('keydown', function (e) {
+  tvNav(e);
+  if (Player.cur || lockEl) return;
+  var typing = /INPUT|TEXTAREA/.test((e.target || {}).tagName || '');
+  if (e.key === 'F11') { e.preventDefault(); aph.fullscreen(!document.fullscreenElement && !window._full); window._full = !window._full; }
+  else if (e.key === '/' && !typing) { e.preventDefault(); UI.go({ t: 'search' }); }
+  else if (App.tvMode && e.key === 'Enter' && document.activeElement && !typing && document.activeElement.click && document.activeElement.classList.contains('poster')) document.activeElement.click();
+});
+/* ---- undangan ---- */
+function joinInvite(code) {
+  if (!code) return;
+  code = String(code).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length !== 6) return;
+  State.stack = []; State.tab = 'nobar'; State.film = null; render();
+  if (Nobar.room) { toast('Kamu sudah berada di ruangan nobar', 3500); return; }
+  Nobar.join(code, function () { return App.nickname; }).then(function () { render(); });
+}
+/* ---- notifikasi chat saat jendela tidak aktif ---- */
+var lastChatN = 0;
+function notifyChat(msg) {
+  if (!document.hidden && document.hasFocus()) return;
+  if (!('Notification' in window)) return;
+  var show = function () { try { var n = new Notification(msg.nick || 'Nobar', { body: msg.text, silent: false }); n.onclick = function () { aph.setState && 0; window.focus(); }; } catch (e) {} };
+  if (Notification.permission === 'granted') show(); else if (Notification.permission === 'default') Notification.requestPermission().then(function (p) { if (p === 'granted') show(); });
+}
+window.notifyChat = notifyChat;
+
 async function boot() {
   $app = document.getElementById('app');
   try { var m = await aph.meta(); State.version = m.version; } catch (e) { State.version = '1.10.0'; }
-  App.init();
+  App.init(); Dl.init(); applyMode();
+  if (window.aph) { aph.setCfg({ trayClose: App.trayClose }); aph.inviteReady(joinInvite); }
+  window.addEventListener('error', function (e) { aph.log('ERR ' + e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno); });
+  window.addEventListener('unhandledrejection', function (e) { aph.log('REJ ' + (e.reason && e.reason.stack || e.reason)); });
   var start = function () {
     if (App.lockEnabled) showLock();
     render();
     App.refresh();
     setInterval(function () { if (!document.hidden && !Player.cur) App.refresh(); }, 30000);
+    setInterval(function () { if (App.saver && !Player.cur && window.aph) { aph.clearCache(); } }, 15 * 60000);
     var last = Store.get('lastUpdateCheck', 0);
     if (Date.now() - last > 6 * 3600 * 1000) {
       Update.check(State.version).then(function (u) { Store.set('lastUpdateCheck', Date.now()); State.update = u; if (u) render(); }).catch(function () {});

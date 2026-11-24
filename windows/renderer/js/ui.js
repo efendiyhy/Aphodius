@@ -334,6 +334,13 @@ function detailScreen(id) {
   }
   if (!isExtra(f)) acts.append(btn(App.favs.has(f.id) ? 'DI DAFTARKU' : 'DAFTARKU', App.favs.has(f.id) ? 'check' : 'plus', false, function () { App.toggleFav(f.id); }));
   if (!isSeries(f)) acts.append(btn('NOBAR', 'people', false, function () { UI.go({ t: 'nobar', film: f.id }); }));
+  var inQ = App.queue.indexOf(f.id) >= 0;
+  acts.append(btn(inQ ? 'DI ANTREAN' : 'ANTREAN', inQ ? 'check' : 'plus', false, function () { inQ ? App.dequeue(f.id) : (App.enqueue(f.id), toast('Ditambah ke antrean')); }));
+  if (!isSeries(f) && window.aph) {
+    if (Dl.has(f.id)) acts.append(btn('HAPUS UNDUHAN', 'trash', false, function () { Dl.remove(f.id); }));
+    else if (Dl.busy(f.id)) acts.append(btn('BATAL UNDUH', 'close', false, function () { Dl.cancel(f.id); }), h('span', { class: 'badge', 'data-dl': f.id }, '…'));
+    else acts.append(btn('UNDUH', 'download', false, function () { Dl.start(f); }));
+  }
   if (fr > 0.95 && !isSeries(f)) body.append(h('span', { class: 'badge' }, 'Selesai ditonton'));
   body.append(acts);
   body.append(h('div', { class: 'syn' }, f.synopsis || 'Belum ada sinopsis.'));
@@ -342,10 +349,13 @@ function detailScreen(id) {
     var eps = h('div', { class: 'eps' });
     f.episodes.forEach(function (e, i) {
       var ef = App.epFilm(f, i); var p = App.progress[ef.id]; var pf = App.frac(p);
-      eps.append(h('button', { class: 'ep', onclick: function () { UI.play(f, { ep: i }); } },
+      var dlb = !window.aph ? null : Dl.has(ef.id) ? h('button', { class: 'iconbtn', title: 'Hapus unduhan', onclick: function () { Dl.remove(ef.id); } }, icon('check', 16))
+        : Dl.busy(ef.id) ? h('span', { class: 'badge', 'data-dl': ef.id, onclick: function () { Dl.cancel(ef.id); }, title: 'Klik untuk batal' }, '…')
+        : h('button', { class: 'iconbtn', title: 'Unduh episode', onclick: function () { Dl.start(ef); } }, icon('download', 16));
+      eps.append(h('div', { class: 'eprow' }, h('button', { class: 'ep', onclick: function () { UI.play(f, { ep: i }); } },
         h('span', { class: 'n' }, e.n), h('span', { class: 'tt' }, e.title),
         h('span', { class: 'st' }, pf > 0.95 ? 'Selesai' : pf >= 0.02 ? fmtTime(p.pos) + ' / ' + fmtTime(p.dur) : ''),
-        pf > 0 ? h('div', { class: 'prog' }, h('i', { style: { width: Math.round(pf * 100) + '%' } })) : null));
+        pf > 0 ? h('div', { class: 'prog' }, h('i', { style: { width: Math.round(pf * 100) + '%' } })) : null), dlb));
     });
     body.append(eps);
   }
@@ -434,13 +444,44 @@ function profileScreen(state) {
   }));
   set.append(h('div', { class: 'line', style: { display: 'block' } }, 'Equalizer', h('small', {}, 'Pilih preset suara'), eqRow));
   page.append(set);
+  /* Windows: sistem */
+  var win = h('div', { class: 'panel' }, h('h4', {}, 'Windows'));
+  win.append(h('div', { class: 'line' }, h('div', { class: 'grow' }, 'Tetap di baki saat ditutup', h('small', {}, 'Tombol X menyembunyikan jendela; film dan suara tetap jalan. Keluar lewat ikon baki.')),
+    toggle(App.trayClose, function (on) { App.set('trayClose', on); aph.setCfg({ trayClose: on }); })));
+  win.append(h('div', { class: 'line' }, h('div', { class: 'grow' }, 'Mode TV', h('small', {}, 'Tampilan lebih besar, navigasi dengan tombol panah, Enter, dan Esc')),
+    toggle(App.tvMode, function (on) { App.set('tvMode', on); applyMode(); })));
+  win.append(h('div', { class: 'line' }, h('div', { class: 'grow' }, 'Hemat memori', h('small', {}, 'Poster lebih kecil dan cache dibersihkan berkala')),
+    toggle(App.saver, function (on) { App.set('saver', on); Thumbs.clear && Thumbs.clear(); applyMode(); })));
+  win.append(h('div', { class: 'line' }, h('div', { class: 'grow' }, 'Buka lewat link undangan', h('small', {}, 'Daftarkan aphodius://join/KODE ke Windows (hanya versi terpasang/portabel di folder yang sama)')),
+    h('div', { class: 'acts' }, chip('Daftarkan', false, async function () { toast((await aph.proto(true)) ? 'Link undangan terdaftar' : 'Tidak bisa mendaftarkan link', 3000); }))));
+  var cacheMsg = h('small', {});
+  win.append(h('div', { class: 'line' }, h('div', { class: 'grow' }, 'Cache & log', cacheMsg),
+    h('div', { class: 'acts' }, chip('Bersihkan cache', false, async function () { await aph.clearCache(); Thumbs.clear && Thumbs.clear(); toast('Cache dibersihkan'); }), chip('Buka log', false, function () { aph.showLog(); }))));
+  page.append(win);
+  /* antrean & unduhan */
+  var ids = Object.keys(App.downloads);
+  var dp = h('div', { class: 'panel' }, h('h4', {}, 'Antrean & Unduhan'));
+  dp.append(h('div', { class: 'acts' }, btn('ANTREAN (' + App.queue.length + ')', 'list', false, function () { UI.go({ t: 'queue' }); }), btn('BUKA FOLDER UNDUHAN', 'ext', false, function () { aph.dlFolder(); })));
+  if (!ids.length) dp.append(h('p', {}, 'Belum ada unduhan. Unduh dari halaman detail untuk menonton tanpa internet.'));
+  ids.forEach(function (id) {
+    var d = App.downloads[id];
+    dp.append(h('div', { class: 'hist' }, h('div', { class: 'grow' }, h('b', {}, d.name), h('small', {}, Math.round(d.size / 1048576) + ' MB')),
+      h('button', { class: 'iconbtn', title: 'Hapus', onclick: function () { Dl.remove(id); } }, icon('trash', 18))));
+  });
+  page.append(dp);
   page.append(h('div', { class: 'panel' }, h('h4', {}, 'Riwayat tontonan'), h('p', {}, 'Lihat dan hapus riwayat menonton.'), btn('BUKA RIWAYAT', 'history', false, function () { UI.go({ t: 'history' }); })));
   /* pembaruan */
   var upd = h('div', { class: 'panel' }, h('h4', {}, 'Pembaruan'), h('p', {}, 'Versi terpasang: ' + (state.version || '?')));
   var msg = h('div', { class: 'err', style: { color: 'var(--muted)' } });
   upd.append(btn('CEK PEMBARUAN', 'refresh', false, async function () {
     msg.textContent = 'Memeriksa…';
-    try { var u = await Update.check(state.version); state.update = u; msg.textContent = u ? 'Versi ' + u.version + ' tersedia.' : 'Sudah versi terbaru.'; if (u) upd.append(btn('UNDUH ' + u.version, 'ext', true, function () { aph.open(u.url); })); }
+    try { var u = await Update.check(state.version); state.update = u; msg.textContent = u ? 'Versi ' + u.version + ' tersedia.' : 'Sudah versi terbaru.'; if (u) {
+        upd.append(btn('PERBARUI SEKARANG', 'download', true, async function () {
+          msg.textContent = 'Mengunduh…'; var off = aph.onUpd(function (p) { msg.textContent = 'Mengunduh… ' + (p.total ? Math.round(p.got * 100 / p.total) + '%' : Math.round(p.got / 1048576) + ' MB'); });
+          var r = await aph.updStart(u.url); off();
+          if (!r.ok) { msg.textContent = 'Pembaruan otomatis gagal (' + r.error + '). Membuka halaman unduhan…'; aph.open(u.page || u.url); }
+        }), btn('UNDUH MANUAL', 'ext', false, function () { aph.open(u.page || u.url); }));
+      } }
     catch (e) { msg.textContent = 'Gagal memeriksa: ' + (e.message || e); }
   }), msg);
   page.append(upd);
@@ -462,6 +503,27 @@ function historyScreen(state) {
     box.append(h('div', { class: 'hist' }, h('div', { class: 'grow' }, h('b', {}, name + ep), h('small', {}, new Date(p.ts).toLocaleString('id-ID') + ' • ' + fmtTime(p.pos) + ' / ' + fmtTime(p.dur) + ' (' + Math.round(App.frac(p) * 100) + '%)')),
       f ? btn('BUKA', null, false, function () { UI.openFilm(f); }) : null,
       h('button', { class: 'iconbtn', title: 'Hapus', onclick: function () { App.removeHistory(k); state.rerender(); } }, icon('trash', 18))));
+  });
+  page.append(box);
+  return page;
+}
+
+
+/* ---------- ANTREAN ---------- */
+function queueScreen(state) {
+  var page = h('div', { class: 'page' });
+  page.append(h('div', { class: 'topbar' }, h('button', { class: 'iconbtn', onclick: UI.back }, icon('back', 20))), h('h1', {}, 'Antrean tonton'));
+  var items = App.queue.map(function (id) { return App.find(id); }).filter(Boolean);
+  if (!items.length) { page.append(h('div', { class: 'empty' }, 'Antrean kosong. Tambahkan dari halaman detail film.')); return page; }
+  page.append(h('div', { class: 'acts' }, btn('PUTAR SEMUA', 'play', true, function () { var f = items[0]; App.dequeue(f.id); UI.play(f, { fromStart: true }); }), btn('KOSONGKAN', 'trash', false, function () { App.queue.slice().forEach(function (i) { App.dequeue(i); }); state.rerender(); })));
+  var box = h('div', { class: 'panel', style: { marginTop: '14px', maxWidth: '900px' } });
+  App.queue.forEach(function (id, i) {
+    var f = App.find(id); if (!f) return;
+    box.append(h('div', { class: 'hist' }, h('div', { class: 'grow' }, h('b', {}, (i + 1) + '. ' + f.name), h('small', {}, kind(f) + ' • ' + meta(f))),
+      btn('BUKA', null, false, function () { UI.openFilm(f); }),
+      h('button', { class: 'iconbtn', title: 'Naik', onclick: function () { App.moveQueue(i, -1); state.rerender(); } }, icon('back', 16)),
+      h('button', { class: 'iconbtn', title: 'Turun', onclick: function () { App.moveQueue(i, 1); state.rerender(); } }, icon('fwd', 16)),
+      h('button', { class: 'iconbtn', title: 'Hapus', onclick: function () { App.dequeue(id); state.rerender(); } }, icon('close', 16))));
   });
   page.append(box);
   return page;

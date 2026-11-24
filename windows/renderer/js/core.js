@@ -41,7 +41,7 @@ var ICON_PATHS = {
   copy: 'M9 9h11v11H9zM5 15V4h11', send: 'M3 11l18-8-8 18-2-8z', moon: 'M20 14A8 8 0 1 1 10 4a6.5 6.5 0 0 0 10 10z', skip: 'M12 5v14M5 12h14', star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
   quality: 'M4 6h16M4 12h16M4 18h16M8 4v4M15 10v4M10 16v4', speed: 'M12 4a9 9 0 1 0 9 9M12 13l5-5', crop: 'M7 3v14h14M3 7h14v14', sound: 'M4 9h4l5-4v14l-5-4H4zM17 9a4 4 0 0 1 0 6', vol: 'M4 9h4l5-4v14l-5-4H4zM17 8a5 5 0 0 1 0 8',
   aspect: 'M4 6h16v12H4zM8 10h8v4H8z', settings: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM4 12h2M18 12h2M12 4v2M12 18v2', history: 'M4 12a8 8 0 1 0 3-6M4 4v4h4M12 8v5l3 2', trash: 'M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13',
-  eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', ext: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
+  eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', ext: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6', download: 'M12 4v11M7 11l5 5 5-5M5 20h14',
 };
 function icon(name, size, filled) {
   var s = size || 22;

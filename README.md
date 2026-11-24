@@ -76,6 +76,14 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 ## Riwayat Pembaruan
 
 <details open>
+<summary><b>v1.11.0</b> — Windows jauh lebih lengkap, undangan nobar</summary>
+
+- Windows: slider volume, pilihan keluaran audio, perbaikan suara hilang/bisu (volume minimal 20%, buka bisu otomatis menaikkan volume, efek suara dimatikan sendiri bila membisukan, peringatan bila video memang tanpa suara).
+- Windows: gambar-dalam-gambar, tombol media keyboard, tombol di taskbar, ikon baki, subtitle .srt/.vtt, pratinjau saat menggeser seek, putar otomatis episode berikutnya, lewati intro per series, antrean, unduhan offline, mode TV, hemat memori, pembaruan otomatis di dalam aplikasi, dan installer .exe di samping ZIP portabel.
+- Nobar: **link undangan** `aphodius://join/KODE` dan tombol bagikan di Windows dan Android (Android langsung membuka dan bergabung), volume suara per peserta, penanda siapa yang sedang bicara, notifikasi chat di Windows.
+</details>
+
+<details>
 <summary><b>v1.10.1</b> — Windows lebih ringan dan mulus</summary>
 
 - Windows: poster diperkecil dan hanya dimuat saat mendekati layar (dibuang lagi saat jauh), daftar panjang dirender bertahap, dan muat ulang otomatis tidak lagi membangun ulang layar. Pemakaian memori turun sekitar 40% dan scroll jauh lebih mulus.

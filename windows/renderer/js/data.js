@@ -55,6 +55,8 @@ var App = {
   quality: Store.get('quality', 0), speed: Store.get('speed', 1), skipSec: Store.get('skipSec', 10),
   cropOn: Store.get('cropOn', false), crop: Store.get('crop', [0, 0, 0, 0]),
   floatChat: Store.get('floatChat', true), thumbPoster: Store.get('thumbPoster', true), surround: Store.get('surround', false),
+  autoNext: Store.get('autoNext', true), subSize: Store.get('subSize', 24), outDev: Store.get('outDev', ''), intro: Store.get('intro', {}),
+  downloads: Store.get('downloads', {}), queue: Store.get('queue', []), trayClose: Store.get('trayClose', false), tvMode: Store.get('tvMode', false), saver: Store.get('saver', false),
   eq: Store.get('eq', EQ_FLAT), hintSeen: Store.get('hintSeen', false), sort: Store.get('sort', 'new'),
   etag: null, listeners: new Set(),
 
@@ -82,6 +84,7 @@ var App = {
     return this.progress[f.id] || null;
   },
   frac: function (p) { return p && p.dur > 0 ? Math.min(1, Math.max(0, p.pos / p.dur)) : 0; },
+  byId: function (id) { return this.find(id); },
   epFilm: function (f, i) {
     var e = f.episodes[i];
     return Object.assign({}, f, { id: f.id + '#' + e.n, link: e.link, name: f.name + ' • Ep ' + e.n, type: 'film', episodes: [] });
@@ -170,6 +173,10 @@ var App = {
   clearHistory: function () { this.progress = {}; Store.set('progress', this.progress); this.emit(); },
   hideFromContinue: function (f) { this.hiddenCont.add(f.id); Store.set('hiddenCont', Array.from(this.hiddenCont)); this.emit(); },
   set: function (k, v) { this[k] = v; Store.set(k, v); this.emit(); },
+  setIntro: function (base, r) { if (r) this.intro[base] = [Math.max(0, r[0]), r[1]]; else delete this.intro[base]; Store.set('intro', this.intro); },
+  enqueue: function (id) { if (this.queue.indexOf(id) < 0) { this.queue.push(id); Store.set('queue', this.queue); this.emit(); } },
+  dequeue: function (id) { this.queue = this.queue.filter(function (x) { return x !== id; }); Store.set('queue', this.queue); this.emit(); },
+  moveQueue: function (i, d) { var j = i + d; if (j < 0 || j >= this.queue.length) return; var q = this.queue.slice(); var t = q[i]; q[i] = q[j]; q[j] = t; this.queue = q; Store.set('queue', q); this.emit(); },
 
   nextFor: function (f) {
     var all = isExtra(f) ? this.extraFilms : this.films;
@@ -223,4 +230,36 @@ var Update = {
     var zip = (j.assets || []).find(function (a) { return /windows.*\.zip$/i.test(a.name); });
     return { version: ver, notes: String(j.body || '').slice(0, 600), url: zip ? zip.browser_download_url : j.html_url, page: j.html_url };
   },
+};
+
+/* ---- unduhan offline (mp4) ---- */
+var Dl = {
+  prog: {},
+  init: function () {
+    if (!window.aph) return;
+    aph.onDl(function (p) {
+      Dl.prog[p.id] = p;
+      var t = p.total ? Math.round(p.got * 100 / p.total) + '%' : Math.round(p.got / 1048576) + ' MB';
+      Array.prototype.forEach.call(document.querySelectorAll('[data-dl="' + String(p.id).replace(/"/g, '') + '"]'), function (el) { el.textContent = t; });
+    });
+  },
+  has: function (id) { return !!App.downloads[id]; },
+  busy: function (id) { return !!Dl.prog[id]; },
+  start: async function (f) {
+    if (!window.aph || Dl.prog[f.id]) return;
+    Dl.prog[f.id] = { got: 0, total: 0 }; App.emit();
+    try {
+      var vs = await Extractor.extract(f.link, function () {});
+      var mp4 = vs.filter(function (v) { return !v.hls; });
+      if (!mp4.length) throw new Error('video ini hanya tersedia sebagai stream (HLS)');
+      var v = Extractor.chooseVariant(mp4, App.quality) || mp4[0];
+      var r = await aph.dlStart(f.id, v.url);
+      if (!r.ok) throw new Error(r.error);
+      App.downloads[f.id] = { name: f.name, size: r.size, ts: Date.now() }; Store.set('downloads', App.downloads);
+      toast('Unduhan selesai: ' + f.name, 3000);
+    } catch (e) { toast('Unduhan gagal: ' + (e.message || e), 4500); }
+    delete Dl.prog[f.id]; App.emit();
+  },
+  cancel: function (id) { aph.dlCancel(id); },
+  remove: async function (id) { await aph.dlRemove(id); delete App.downloads[id]; Store.set('downloads', App.downloads); App.emit(); },
 };
