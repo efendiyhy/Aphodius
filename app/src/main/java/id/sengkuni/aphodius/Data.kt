@@ -222,6 +222,8 @@ class AppState(ctx: Context) {
     val store = Store(ctx)
     val nobar = Nobar(ctx)
     var crashInfo by mutableStateOf<String?>(null)
+    /** Kode ruangan dari link undangan aphodius://join/KODE, menunggu diproses setelah aplikasi siap. */
+    var pendingJoin by mutableStateOf<String?>(null)
     var allFilms by mutableStateOf<List<Film>>(emptyList())
     var surround by mutableStateOf(store.surround)
     var floatChat by mutableStateOf(store.floatChat)

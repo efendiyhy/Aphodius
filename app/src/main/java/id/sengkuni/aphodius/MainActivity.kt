@@ -42,7 +42,26 @@ class MainActivity : FragmentActivity() {
         CrashLog.install(applicationContext)
         val state = AppState(applicationContext)
         state.crashInfo = CrashLog.take(applicationContext)
+        appState = state
+        readInvite(intent)
         setContent { AphodiusTheme { androidx.compose.runtime.CompositionLocalProvider(LocalApp provides state) { App(state) } } }
+    }
+
+    private var appState: AppState? = null
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        readInvite(intent)
+    }
+
+    /** Link undangan: aphodius://join/ABC123 (atau ?c=ABC123). Hanya 6 huruf/angka yang diterima. */
+    private fun readInvite(i: android.content.Intent?) {
+        val u = i?.data ?: return
+        if (u.scheme != "aphodius" || u.host != "join") return
+        val raw = u.lastPathSegment ?: u.getQueryParameter("c") ?: return
+        val code = raw.uppercase().filter { it.isLetterOrDigit() }
+        if (code.length == 6) appState?.pendingJoin = code
     }
 }
 
@@ -107,6 +126,8 @@ fun App(s: AppState) {
             confirmButton = { androidx.compose.material3.TextButton(onClick = { s.crashInfo = null }) { androidx.compose.material3.Text("Tutup", color = C.Aqua) } },
         )
     }
+    // Link undangan: buka menu Nobar, lalu otomatis gabung (NobarScreen yang menjalankan)
+    LaunchedEffect(s.pendingJoin) { if (s.pendingJoin != null) stack = listOf(Route.Nobar()) }
     val top = stack.lastOrNull()
     BackHandler(enabled = top == null && tab != Tab.Home) { tab = Tab.Home }
     BackHandler(enabled = top is Route.Detail || top is Route.Search) { stack = stack.dropLast(1) }

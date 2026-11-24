@@ -300,6 +300,14 @@ fun NobarScreen(s: AppState, filmId: String?, onBack: () -> Unit, onWatch: (Film
     var code by remember { mutableStateOf("") }
     var confirmClose by remember { mutableStateOf(false) }
     val clip = LocalClipboardManager.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+
+    // Link undangan: gabung otomatis ke kode yang dikirim teman
+    LaunchedEffect(s.pendingJoin, room == null) {
+        val c = s.pendingJoin
+        if (c != null && room == null && !nb.busy) { s.pendingJoin = null; code = c; nb.join(c) { s.nickname } }
+        else if (c != null && room != null) s.pendingJoin = null
+    }
 
     BackHandler { nb.leave(); onBack() }
     // Ruangan ditutup host
@@ -375,6 +383,12 @@ fun NobarScreen(s: AppState, filmId: String?, onBack: () -> Unit, onWatch: (Film
                 Text(info?.filmName ?: "Memuat…", color = Color.White, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             IconBtn(Ic.Copy, "Salin kode", { clip.setText(AnnotatedString(room.code)) })
+            Spacer(Modifier.width(6.dp))
+            IconBtn(Ic.Share, "Bagikan undangan", {
+                val msg = "Ayo nobar${info?.filmName?.let { " \"$it\"" } ?: ""} bareng di Aphodius!\nKode ruangan: ${room.code}\nBuka link: aphodius://join/${room.code}\n(atau Aphodius > Nobar > Gabung dengan kode)"
+                val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, msg) }
+                runCatching { ctx.startActivity(android.content.Intent.createChooser(send, "Bagikan undangan")) }
+            })
         }
         if (room.status == "offline") Text("Koneksi terputus, mencoba menyambung lagi…", color = C.Gold, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         Spacer(Modifier.height(10.dp))
