@@ -350,6 +350,7 @@ VoiceEngine.prototype = {
     this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
     this.stream.getAudioTracks().forEach(function (t) { t.enabled = true; });
     var room = this.room, self = this;
+    this.watch(room.me, this.stream); // indikator bicara untuk diri sendiri (diam saat mik dimatikan)
     current.filter(function (m) { return m.uid !== room.me && m.voice; }).forEach(function (m) { self.connect(m.uid); });
   },
   getVol: function (uid) { try { var v = JSON.parse(localStorage.getItem('aph.pvol') || '{}')[uid]; return v == null ? 1 : v; } catch (e) { return 1; } },
@@ -362,13 +363,15 @@ VoiceEngine.prototype = {
     var self = this, room = this.room;
     try {
       if (!this.actx) this.actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (this.actx.state === 'suspended') this.actx.resume().catch(function () {});
       var src = this.actx.createMediaStreamSource(stream), an = this.actx.createAnalyser(); an.fftSize = 256; src.connect(an);
       var buf = new Uint8Array(an.fftSize); this.meters = this.meters || {};
       if (this.meters[uid]) clearInterval(this.meters[uid]);
       this.meters[uid] = setInterval(function () {
         an.getByteTimeDomainData(buf); var mx = 0; for (var i = 0; i < buf.length; i++) mx = Math.max(mx, Math.abs(buf[i] - 128));
         var sp = mx > 8; room.speaking = room.speaking || {};
-        if (!!room.speaking[uid] !== sp) { room.speaking[uid] = sp; room.emit(); }
+        // ubah kelas langsung (tanpa emit) supaya panel chat/kotak tulis tidak digambar ulang
+        if (!!room.speaking[uid] !== sp) { room.speaking[uid] = sp; document.querySelectorAll('.mem[data-uid="' + uid + '"]').forEach(function (el) { el.classList.toggle('speaking', sp); }); }
       }, 200);
     } catch (e) { /* tanpa indikator */ }
   },

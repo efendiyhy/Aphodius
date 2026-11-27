@@ -9,8 +9,8 @@ function memberStrip(room, canKick) {
     var st = room.peerState[m.uid];
     var isHost = room.info && room.info.host === m.uid;
     var status = m.buf ? 'menunggu' : 'siap';
-    var el = h('div', { class: 'mem' + (room.speaking && room.speaking[m.uid] ? ' speaking' : '') }, avatar(m.name, 28),
-      h('div', {}, h('div', {}, m.name + (m.uid === room.me ? ' (kamu)' : '') + (isHost ? ' ★' : '')),
+    var el = h('div', { class: 'mem' + (room.speaking && room.speaking[m.uid] ? ' speaking' : ''), 'data-uid': m.uid }, avatar(m.name, 28),
+      h('div', {}, h('div', { style: { display: 'flex', alignItems: 'center' } }, m.name + (m.uid === room.me ? ' (kamu)' : '') + (isHost ? ' ★' : ''), h('span', { class: 'eq' }, h('i'), h('i'), h('i'))),
         h('div', { class: 'st ' + (m.buf ? 'wait' : 'ok') }, status + (m.voice ? (m.mic ? ' · 🎙' : ' · 🔇') : '') + (st && m.voice && m.uid !== room.me ? ' · ' + st : ''))));
     if (m.uid !== room.me && m.voice && room.voice) {
       var vr = h('input', { type: 'range', min: 0, max: 100, class: 'vol pv', title: 'Volume suara ' + m.name, value: Math.round(room.voice.getVol(m.uid) * 100) });
@@ -148,9 +148,9 @@ function nobarScreen(state) {
     codeBox.querySelector('.fn').textContent = room.info ? room.info.filmName : 'Memuat…';
     clear(memHost); memHost.append(h('div', { style: { color: 'var(--muted)', fontSize: '12px', fontWeight: 700, marginBottom: '6px' } }, room.members.length + '/' + MAX_MEMBERS + ' bergabung'), memberStrip(room, true));
     clear(ctlRow);
-    ctlRow.append(chip(!room.voiceOn ? 'Nyalakan suara' : room.micOn ? 'Mik aktif' : 'Mik mati', room.voiceOn && room.micOn, function () { micAction(room); }));
-    ctlRow.append(chip(room.camOn ? 'Kamera aktif' : 'Nyalakan kamera', room.camOn, function () { room.toggleCam(); }));
-    if (room.voiceOn) ctlRow.append(chip('Matikan suara', false, function () { room.disableVoice(); }));
+    var micOn = room.voiceOn && room.micOn;
+    ctlRow.append(h('button', { class: 'chip ' + (micOn ? 'g' : 'r'), onclick: function () { micAction(room); } }, icon(micOn ? 'mic' : 'micoff', 14), micOn ? 'Mik hidup' : 'Mik mati'));
+    ctlRow.append(h('button', { class: 'chip ' + (room.camOn ? 'g' : 'r'), onclick: function () { room.toggleCam(); } }, icon(room.camOn ? 'cam' : 'camoff', 14), room.camOn ? 'Kamera hidup' : 'Kamera mati'));
     if (room.isHost) ctlRow.append(chip(room.info && room.info.ctl === 'all' ? 'Semua boleh kendali: ya' : 'Semua boleh kendali: tidak', room.info && room.info.ctl === 'all', function () { room.setControl(!(room.info && room.info.ctl === 'all')); }));
     else ctlRow.append(h('span', { style: { color: 'var(--subtle)', fontSize: '12px', alignSelf: 'center' } }, room.info && room.info.ctl === 'all' ? 'Semua boleh mengendalikan' : 'Hanya host yang mengendalikan'));
     errRow.textContent = room.voiceError || '';

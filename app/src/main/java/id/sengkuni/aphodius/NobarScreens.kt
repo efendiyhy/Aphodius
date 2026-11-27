@@ -331,12 +331,14 @@ fun ChatOverlay(room: NobarRoom, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SmallChip(text: String, active: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, onClick: () -> Unit) {
+private fun SmallChip(text: String, active: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, tone: Boolean = false, onClick: () -> Unit) {
+    // tone = true: hijau saat aktif, merah saat mati (tombol mik/kamera)
+    val bg = if (tone) (if (active) Color(0xFF1F9D55) else Color(0xFFC0392B)) else if (active) C.Aqua else C.SurfaceHigh
     Row(
-        Modifier.clip(RoundedCornerShape(50)).background(if (active) C.Aqua else C.SurfaceHigh).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 6.dp),
+        Modifier.clip(RoundedCornerShape(50)).background(bg).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val fg = if (active) C.OnAqua else Color.White
+        val fg = if (active && !tone) C.OnAqua else Color.White
         if (icon != null) { Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(5.dp)) }
         Text(text, color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
@@ -353,9 +355,8 @@ fun LobbyPanel(room: NobarRoom, modifier: Modifier = Modifier) {
         MemberStrip(room)
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            SmallChip(if (!room.voiceOn) "Nyalakan suara" else if (room.micOn) "Mik aktif" else "Mik mati", room.voiceOn && room.micOn, if (room.voiceOn && room.micOn) Ic.Mic else Ic.MicOff) { mic() }
-            SmallChip(if (room.camOn) "Kamera aktif" else "Nyalakan kamera", room.camOn, if (room.camOn) Ic.Cam else Ic.CamOff) { cam() }
-            if (room.voiceOn) SmallChip("Matikan suara", false) { room.disableVoice() }
+            SmallChip(if (room.voiceOn && room.micOn) "Mik hidup" else "Mik mati", room.voiceOn && room.micOn, if (room.voiceOn && room.micOn) Ic.Mic else Ic.MicOff, tone = true) { mic() }
+            SmallChip(if (room.camOn) "Kamera hidup" else "Kamera mati", room.camOn, if (room.camOn) Ic.Cam else Ic.CamOff, tone = true) { cam() }
             if (room.isHost) SmallChip(if (room.info?.ctl == "all") "Semua boleh kendali: ya" else "Semua boleh kendali: tidak", room.info?.ctl == "all") { room.setControl(room.info?.ctl != "all") }
             else Text(if (room.info?.ctl == "all") "Semua boleh mengendalikan" else "Hanya host yang mengendalikan", color = C.Subtle, fontSize = 12.sp)
         }
