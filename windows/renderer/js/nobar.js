@@ -333,7 +333,7 @@ NobarRoom.prototype = {
       if (!this.voice) return;
       var on = !this.camOn;
       await this.voice.setCam(on);
-      this.camOn = on; delete this.vels[this.me]; this.heartbeat(); this.emit();
+      this.camOn = on; this.heartbeat(); this.emit();
     } catch (e) {
       this.camOn = false; this.voiceError = 'Kamera gagal: ' + (e && e.name === 'NotAllowedError' ? 'izin kamera ditolak' : (e && e.message) || e); this.emit();
     }
@@ -371,7 +371,7 @@ VoiceEngine.prototype = {
         an.getByteTimeDomainData(buf); var mx = 0; for (var i = 0; i < buf.length; i++) mx = Math.max(mx, Math.abs(buf[i] - 128));
         var sp = mx > 8; room.speaking = room.speaking || {};
         // ubah kelas langsung (tanpa emit) supaya panel chat/kotak tulis tidak digambar ulang
-        if (!!room.speaking[uid] !== sp) { room.speaking[uid] = sp; document.querySelectorAll('.mem[data-uid="' + uid + '"]').forEach(function (el) { el.classList.toggle('speaking', sp); }); }
+        if (!!room.speaking[uid] !== sp) { room.speaking[uid] = sp; document.querySelectorAll('[data-uid="' + uid + '"]').forEach(function (el) { el.classList.toggle('speaking', sp); }); }
       }, 200);
     } catch (e) { /* tanpa indikator */ }
   },
@@ -383,15 +383,17 @@ VoiceEngine.prototype = {
     if (on) {
       var vs = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } }, audio: false });
       vs.getVideoTracks().forEach(function (t) { self.stream.addTrack(t); });
+      this.preview = new MediaStream(this.stream.getVideoTracks());
     } else {
       this.stream.getVideoTracks().forEach(function (t) { t.stop(); self.stream.removeTrack(t); });
+      this.preview = null;
     }
     Object.keys(this.peers).forEach(function (uid) { self.connect(uid); });
   },
   newPc: function (uid) {
     var self = this, room = this.room;
     if (this.peers[uid]) try { this.peers[uid].close(); } catch (e) {}
-    delete this.remoteSet[uid]; delete this.pending[uid]; delete room.videos[uid]; delete room.vels[uid];
+    delete this.remoteSet[uid]; delete this.pending[uid]; delete room.videos[uid];
     var pc = new RTCPeerConnection({ iceServers: this.ice });
     if (this.stream) this.stream.getTracks().forEach(function (t) { pc.addTrack(t, self.stream); });
     pc.onicecandidate = function (e) {
@@ -411,6 +413,8 @@ VoiceEngine.prototype = {
     pc.onconnectionstatechange = function () {
       var s = pc.connectionState;
       room.peerState[uid] = s === 'connected' ? 'ok' : (s === 'failed' || s === 'disconnected') ? 'gagal' : s === 'closed' ? 'tutup' : 'menyambung';
+      // koneksi gagal: satu pihak (uid terkecil) menyambung ulang supaya tidak tabrakan penawaran
+      if (s === 'failed' && room.me < uid) setTimeout(function () { if (!self.stopped && self.peers[uid] === pc) self.connect(uid); }, 2000);
       room.emit();
     };
     this.peers[uid] = pc; room.peerState[uid] = 'menyambung';
@@ -459,7 +463,7 @@ VoiceEngine.prototype = {
     Object.keys(this.peers).forEach(function (k) {
       if (live[k]) return;
       try { self.peers[k].close(); } catch (e) {}
-      delete self.peers[k]; delete self.remoteSet[k]; delete self.pending[k]; delete room.peerState[k]; delete room.videos[k]; delete room.vels[k];
+      delete self.peers[k]; delete self.remoteSet[k]; delete self.pending[k]; delete room.peerState[k]; delete room.videos[k];
       if (self.audios[k]) { self.audios[k].srcObject = null; delete self.audios[k]; }
     });
   },

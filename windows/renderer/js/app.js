@@ -45,14 +45,20 @@ function startPlayback(f, o, room) {
 
 function sideNav() {
   var cur = State.stack.length ? ({ detail: State.tab, search: State.tab, history: 'profile' }[route().t] || route().t) : State.tab;
-  var side = h('div', { class: 'side' }, h('div', { class: 'brand' }, h('img', { src: 'logo.svg', alt: 'Aphodius' })));
+  var goTab = function (key) { State.stack = []; State.film = null; State.tab = key; render(); };
+  // rail ikon melayang; label muncul saat disorot
+  var rail = h('nav', { class: 'rail' });
   TABS.forEach(function (t) {
     var key = t[0], label = t[1], ic = t[2];
     if (key === 'mylist' && App.extra) { key = 'extra'; label = 'Extraordinary'; ic = 'gem'; }
-    side.append(h('button', { class: 'nav' + (cur === key ? ' on' : ''), onclick: function () { State.stack = []; State.film = null; State.tab = key; render(); } }, icon(ic, 20), label));
+    if (key === 'profile') return; // profil ada di avatar bawah
+    rail.append(h('button', { class: 'rnav' + (cur === key ? ' on' : ''), 'aria-label': label, onclick: function () { goTab(key); } }, icon(ic, 22), h('span', { class: 'tipr' }, label)));
   });
-  side.append(h('div', { class: 'grow' }), h('div', { style: { fontSize: '11px', color: 'var(--subtle)', padding: '0 10px' } }, 'v' + (State.version || '')));
-  return side;
+  return h('div', { class: 'side' },
+    h('button', { class: 'logo', title: 'Beranda', onclick: function () { goTab('home'); } }, h('img', { src: 'icon.png', alt: 'Aphodius' })),
+    rail,
+    h('div', { class: 'sidebot' }, h('button', { class: 'meav' + (cur === 'profile' ? ' on' : ''), title: 'Profil', onclick: function () { goTab('profile'); } }, avatar(App.nickname, 40)),
+      h('div', { class: 'ver' }, 'v' + (State.version || ''))));
 }
 
 function screenFor(r) {
@@ -69,6 +75,7 @@ function screenFor(r) {
     case 'history': return historyScreen(State);
     case 'nobar': return nobarScreen(State);
     case 'queue': return queueScreen(State);
+    case 'all': return allScreen(r);
   }
   return h('div');
 }
@@ -94,7 +101,7 @@ function render() {
     var n = h('div', { class: 'note' }, App.refreshNote); document.body.append(n); App.refreshNote = ''; setTimeout(function () { n.remove(); }, 3500);
   }
 }
-var AUTO = { home: 1, new: 1, movie: 1, series: 1, mylist: 1, extra: 1, detail: 1, history: 1, queue: 1 };
+var AUTO = { all: 1, home: 1, new: 1, movie: 1, series: 1, mylist: 1, extra: 1, detail: 1, history: 1, queue: 1 };
 App.on(function () {
   cancelAnimationFrame(renderQ);
   renderQ = requestAnimationFrame(function () { if (!State.locked && AUTO[route().t] && !Player.cur) render(); else if (App.refreshNote) { var n = h('div', { class: 'note' }, App.refreshNote); document.body.append(n); App.refreshNote = ''; setTimeout(function () { n.remove(); }, 3500); } });

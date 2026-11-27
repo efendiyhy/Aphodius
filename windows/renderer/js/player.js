@@ -62,6 +62,7 @@ function createPlayer(opts) {
   var chatOpen = dock;
   var subs = [], subOn = true, subDelay = 0, subTxt = '', introShown = false, pv = null, pvReady = false, silentTicks = 0, noAudioWarned = false;
   var base = String(film.id).split('#')[0], isEp = String(film.id).indexOf('#') > 0;
+  var userVol = Math.max(0.2, Store.get('vol', 1)); // volume pilihan pengguna; volume efektif bisa diredam saat mik nobar hidup
 
   var video = h('video', { playsinline: true, crossorigin: 'anonymous' });
   video.autoplay = false;
@@ -306,7 +307,16 @@ function createPlayer(opts) {
   }
   function seekTo(frac) { if (!allowed() || !isFinite(video.duration)) return; video.currentTime = frac * video.duration; pub(); }
   function toggleFull() { if (document.fullscreenElement) document.exitFullscreen(); else root.requestFullscreen().catch(function () {}); }
-  function setVol(d) { video.muted = false; video.volume = Math.min(1, Math.max(0, video.volume + d)); showHud('Volume ' + Math.round(video.volume * 100) + '%'); }
+  function setVol(d) { video.muted = false; userVol = Math.min(1, Math.max(0, userVol + d)); applyVol(); showHud('Volume ' + Math.round(userVol * 100) + '%' + (ducked() ? ' (diredam)' : '')); }
+  /* redam suara film saat mik nobar hidup (pengaturan "Redam suara film saat mik hidup") */
+  var DUCK = 0.3;
+  function ducked() { return !!(room && App.duck && room.voiceOn && room.micOn); }
+  function volTarget() { return Math.min(1, Math.max(0, userVol * (ducked() ? DUCK : 1))); }
+  function applyVol() { if (userVol >= 0.2) Store.set('vol', userVol); video.volume = volTarget(); updateControls(); }
+  every(function () { // transisi halus saat redam berubah
+    var t = volTarget(), d = t - video.volume;
+    if (Math.abs(d) > 0.005) video.volume = Math.abs(d) < 0.04 ? t : video.volume + (d > 0 ? 0.04 : -0.04);
+  }, 50);
   function leave() {
     if (!room) { if (phase === 1 && dur() > 0) App.saveProgress(film.id, ended ? dur() : pos(), dur()); }
     else if (room.canControl() && phase === 1) room.publish(false, pos());
@@ -333,9 +343,9 @@ function createPlayer(opts) {
   var playBtn = h('button', { class: 'pbtn', onclick: togglePlay });
   var muteBtn = h('button', { class: 'pbtn', onclick: function () { toggleMute(); } });
   var volEl = h('input', { type: 'range', min: 0, max: 100, class: 'vol', title: 'Volume' });
-  volEl.addEventListener('input', function () { video.muted = false; video.volume = volEl.value / 100; });
+  volEl.addEventListener('input', function () { video.muted = false; userVol = volEl.value / 100; applyVol(); });
   volEl.addEventListener('wheel', function (e) { e.stopPropagation(); });
-  function toggleMute() { if (video.muted || video.volume === 0) { video.muted = false; if (video.volume < 0.05) video.volume = 0.5; } else video.muted = true; }
+  function toggleMute() { if (video.muted || userVol === 0) { video.muted = false; if (userVol < 0.05) userVol = 0.5; applyVol(); } else video.muted = true; }
   var dragging = false;
   var seek = h('div', { class: 'seek' }, h('div', { class: 'bar' }, barBuf, barFill, barKnob));
   seek.addEventListener('mouseleave', function () { tip.style.display = 'none'; });
@@ -354,8 +364,8 @@ function createPlayer(opts) {
   }
   function updateControls() {
     clear(playBtn); playBtn.append(icon(video.paused ? 'play' : 'pause', 22));
-    clear(muteBtn); muteBtn.append(icon(video.muted || video.volume === 0 ? 'micoff' : 'vol', 20));
-    volEl.value = video.muted ? 0 : Math.round(video.volume * 100);
+    clear(muteBtn); muteBtn.append(icon(video.muted || userVol === 0 ? 'micoff' : 'vol', 20));
+    volEl.value = video.muted ? 0 : Math.round(userVol * 100);
   }
   var qLabel = function () { return 'Kualitas · ' + (App.quality === 0 ? 'Otomatis' : App.quality + 'p'); };
   function pbtn(iconName, label, on, fn) { return h('button', { class: 'pbtn' + (on ? ' on' : ''), onclick: function (e) { e.stopPropagation(); fn(); } }, icon(iconName, 18), label); }
@@ -485,32 +495,38 @@ function createPlayer(opts) {
   function render() { renderCenter(); renderCtl(); renderDock(); }
 
   /* ---- nobar: dock chat, chat melayang, reaksi ---- */
-  var dockEl = null, chatRef = null, floatEl = null, vidEl = null;
-  /** Video call melayang di atas pemutar saat panel chat tertutup (saat terbuka, video ada di panel). */
+  var dockEl = null, chatRef = null, floatEl = null, vidEl = null, dk = null;
+  /** Video call melayang di atas pemutar saat panel chat tertutup (saat terbuka, video ada di panel). Wadah tetap, tidak dibuat ulang. */
   function renderVideos() {
-    if (vidEl) { vidEl.remove(); vidEl = null; }
-    if (!room || chatOpen) return;
-    var vg = videoGrid(room); if (!vg) return;
-    vidEl = h('div', { class: 'vfloat' }, vg); stage.append(vidEl);
+    if (!room) return;
+    if (chatOpen) { if (vidEl) vidEl.style.display = 'none'; return; }
+    if (!vidEl) { vidEl = h('div', { class: 'vfloat vgrid', title: 'Klik untuk perkecil/perbesar', onclick: function () { vidEl.classList.toggle('mini'); } }); stage.append(vidEl); }
+    syncVideos(vidEl, room);
   }
+  /** Panel chat dibangun sekali; pembaruan hanya mengganti isi bagian yang berubah (kotak tulis & video tidak ikut dibuat ulang). */
   function renderDock() {
     if (!room) return;
-    if (dockEl) { dockEl.remove(); dockEl = null; chatRef = null; }
-    renderVideos();
-    if (!chatOpen) return;
-    dockEl = h('div', { class: 'dock' });
-    dockEl.append(h('div', { style: { display: 'flex', alignItems: 'center' } }, h('div', { style: { flex: 1 } }, h('b', {}, 'Nobar · ' + room.code), h('div', { style: { color: 'var(--muted)', fontSize: '12px' } }, room.members.length + ' dari ' + MAX_MEMBERS + ' bergabung')),
-      h('button', { class: 'iconbtn', onclick: function () { chatOpen = false; renderDock(); renderCtl(); } }, icon('close', 16))));
-    dockEl.append(memberStrip(room, true));
-    var vg = videoGrid(room); if (vg) dockEl.append(vg);
+    if (!chatOpen) { if (dockEl) { dockEl.remove(); dockEl = null; chatRef = null; dk = null; } renderVideos(); return; }
+    renderVideos(); // sembunyikan video melayang
+    if (!dockEl) {
+      dk = { count: h('div', { style: { color: 'var(--muted)', fontSize: '12px' } }), mem: h('div'), vid: h('div', { class: 'vgrid' }), calls: h('div', { class: 'acts' }), gather: h('div') };
+      dockEl = h('div', { class: 'dock' },
+        h('div', { style: { display: 'flex', alignItems: 'center' } }, h('div', { style: { flex: 1 } }, h('b', {}, 'Nobar · ' + room.code), dk.count),
+          h('button', { class: 'iconbtn', onclick: function () { chatOpen = false; renderDock(); renderCtl(); } }, icon('close', 16))),
+        dk.mem, dk.calls, dk.vid, dk.gather, reactionBar(room));
+      chatRef = chatBox(room, 15); chatRef.style.flex = '1'; dockEl.append(chatRef);
+      root.append(dockEl);
+      setTimeout(applyView, 30);
+    }
+    dk.count.textContent = room.members.length + ' dari ' + MAX_MEMBERS + ' bergabung';
+    clear(dk.mem); dk.mem.append(memberStrip(room, true));
+    clear(dk.calls); callButtons(room).forEach(function (b) { dk.calls.append(b); });
+    syncVideos(dk.vid, room);
+    clear(dk.gather);
     if (room.isHost) {
       var waiting = (room.info && room.info.gather) > 0;
-      dockEl.append(btn(waiting ? 'MENUNGGU SEMUA SIAP…' : 'TUNGGU SEMUA SIAP', null, !waiting, function () { if (!waiting) room.gather(pos()); }, 'block'));
+      dk.gather.append(btn(waiting ? 'MENUNGGU SEMUA SIAP…' : 'TUNGGU SEMUA SIAP', null, !waiting, function () { if (!waiting) room.gather(pos()); }, 'block'));
     }
-    dockEl.append(reactionBar(room));
-    chatRef = chatBox(room, 15); chatRef.style.flex = '1'; dockEl.append(chatRef);
-    root.append(dockEl);
-    setTimeout(applyView, 30);
   }
   function addFloat(m) {
     if (!App.floatChat || chatOpen) return;
@@ -528,7 +544,7 @@ function createPlayer(opts) {
   if (room) {
     var lastChatId = room.chat.length ? room.chat[room.chat.length - 1].id : '';
     var lastReactId = room.reactions.length ? room.reactions[room.reactions.length - 1].id : '';
-    var lastStamp = room.stamp(room.pb), lastPlaying = room.pb.playing, gatherLoop = null, lastMembersKey = '';
+    var lastStamp = room.stamp(room.pb), lastPlaying = room.pb.playing, gatherLoop = null, lastMembersKey = '', lastCtlKey = '', lastDuck = false;
     disposers.push(room.on(function () {
       if (!alive) return;
       if (room.status === 'closed') { leave(); return; }
@@ -550,8 +566,11 @@ function createPlayer(opts) {
           lastReactId = rt;
         }
       }
-      var mk = room.members.map(function (m) { return m.uid + m.buf + m.voice + m.mic + m.cam; }).join() + (room.info ? room.info.gather : '') + room.camOn + Object.keys(room.videos).join();
-      if (mk !== lastMembersKey) { lastMembersKey = mk; if (dockEl) renderDock(); else renderVideos(); renderCtl(); renderGather(); }
+      // isi panel/video hanya diperbarui bila memang berubah; tombol pemutar hanya digambar ulang bila status mik/kamera berubah
+      var mk = room.members.map(function (m) { return m.uid + m.name + m.buf + m.voice + m.mic + m.cam; }).join() + (room.info ? room.info.gather : '') + room.voiceOn + room.micOn + room.camOn + Object.keys(room.videos).join() + JSON.stringify(room.peerState);
+      if (mk !== lastMembersKey) { lastMembersKey = mk; renderDock(); renderGather(); }
+      var ck = '' + room.voiceOn + room.micOn + room.camOn;
+      if (ck !== lastCtlKey) { var wasDuck = lastCtlKey && lastDuck; lastCtlKey = ck; lastDuck = ducked(); renderCtl(); if (lastDuck !== !!wasDuck && App.duck) showHud(lastDuck ? 'Suara film diredam selama mik hidup' : 'Suara film normal'); }
       // sinkron dari pb orang lain
       var st = room.stamp(room.pb);
       if ((st !== lastStamp || room.pb.playing !== lastPlaying) && phase === 1 && room.pb.by !== room.me) {
@@ -645,8 +664,7 @@ function createPlayer(opts) {
     var hint = h('div', { class: 'hint' }, 'Spasi: putar/jeda · ← →: lompat · ↑ ↓ atau roda mouse: volume · F: layar penuh · klik dua kali: layar penuh · Esc: kembali');
     stage.append(hint); setTimeout(function () { hint.remove(); }, 7000); App.hintSeen = true; Store.set('hintSeen', true);
   }
-  video.volume = Math.max(0.2, Store.get('vol', 1)); video.muted = false;
-  video.addEventListener('volumechange', function () { if (video.volume >= 0.2) Store.set('vol', video.volume); });
+  video.volume = volTarget(); video.muted = false;
   video.addEventListener('loadedmetadata', applySink);
   video.addEventListener('play', applyFx, { once: true });
   document.title = film.name + ' — Aphodius'; reportState();

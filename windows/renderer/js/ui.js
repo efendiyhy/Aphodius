@@ -25,6 +25,17 @@ function toggle(on, onchange) {
   return el;
 }
 function sectionTitle(t) { return h('h3', { class: 'sec' }, t); }
+/** Judul baris + tombol "Lihat semua" (membuka semua judul dalam grid). */
+function rowHead(t, list) {
+  return h('div', { class: 'rowh' }, h('h3', { class: 'sec' }, t),
+    list && list.length > 6 ? h('button', { class: 'all', onclick: function () { UI.go({ t: 'all', title: t, ids: list.map(function (f) { return f.id; }) }); } }, 'Lihat semua') : null);
+}
+function allScreen(r) {
+  var list = (r.ids || []).map(function (id) { return App.find(id); }).filter(Boolean);
+  var page = h('div', { class: 'page' }, h('div', { class: 'topbar' }, h('button', { class: 'iconbtn', onclick: UI.back }, icon('back', 20)), h('h1', { style: { margin: 0 } }, r.title || 'Semua')));
+  page.append(list.length ? grid(list) : h('div', { class: 'empty' }, 'Tidak ada judul.'));
+  return page;
+}
 
 /* Poster: URL diperkecil, dimuat hanya saat mendekati layar, dibuang saat jauh (hemat memori & mulus saat scroll) */
 function posterUrl(u, w) {
@@ -116,6 +127,7 @@ function card(f, opts) {
   opts = opts || {};
   var p = posterEl(f);
   var lp = App.lastProg(f);
+  if (f.rating > 0) p.append(h('span', { class: 'rate' }, '★ ' + f.rating.toFixed(1)));
   if (!isSeries(f) && App.frac(App.progress[f.id]) > 0.95) p.append(h('span', { class: 'done' }, 'Selesai'));
   if (opts.progress && lp) p.append(h('div', { class: 'prog' }, h('i', { style: { width: Math.round(App.frac(lp) * 100) + '%' } })));
   var el = h('div', { class: 'card', onclick: function () { opts.onclick ? opts.onclick(f) : UI.openFilm(f); } },
@@ -193,41 +205,69 @@ function pinPad(opts) {
 }
 
 /* ---------- BERANDA ---------- */
+/** Hero besar bergeser otomatis (sorotan): latar poster buram, poster tajam di kanan, info + tombol di kiri. */
+function heroCarousel(list, label, state) {
+  var i = 0, t = 0;
+  var bg = h('div', { class: 'bg' }), art = h('div', { class: 'art' }), info = h('div', { class: 'info' }), dots = h('div', { class: 'hdots' });
+  var box = h('div', { class: 'hero2' }, bg, h('div', { class: 'shade' }), art, info, dots);
+  var show = function (k) {
+    i = (k + list.length) % list.length; var f = list[i];
+    bg.style.backgroundImage = f.poster ? 'url("' + posterUrl(f.poster, 300).replace(/"/g, '%22') + '")' : '';
+    clear(art); art.append(posterEl(f, 500, true)); art.onclick = function () { UI.openFilm(f); };
+    var m = [f.year, isSeries(f) ? 'Series' : 'Film', f.country].filter(Boolean).join('  \u00b7  ');
+    clear(info); info.append(
+      h('div', { class: 'brand2' }, h('img', { src: 'icon.png' }), 'APHODIUS'),
+      h('h2', {}, f.name),
+      h('div', { class: 'meta2' }, m, f.rating > 0 ? h('span', {}, '\u2605 ' + f.rating.toFixed(1)) : null),
+      h('div', { class: 'rank' }, icon(isSeries(f) ? 'series' : 'film', 18), '#' + (i + 1) + ' di ' + label),
+      h('p', {}, f.synopsis || meta(f)),
+      h('div', { class: 'acts' }, btn('Putar', 'play', true, function () { UI.play(f); }), btn('Info lengkap', 'info', false, function () { UI.openFilm(f); }, 'glass')));
+    Array.prototype.forEach.call(dots.children, function (d, j) { d.classList.toggle('on', j === i); });
+  };
+  var restart = function () { clearInterval(t); if (list.length > 1) t = setInterval(function () { if (!document.hidden && !Player.cur) show(i + 1); }, 8000); };
+  list.forEach(function (f, j) { dots.append(h('button', { title: f.name, onclick: function () { show(j); restart(); } })); });
+  box.addEventListener('mouseenter', function () { clearInterval(t); });
+  box.addEventListener('mouseleave', restart);
+  state.disposers.push(function () { clearInterval(t); });
+  show(0); restart();
+  return box;
+}
+
 function homeScreen(state) {
   var films = App.films;
-  var page = h('div', { class: 'page' });
-  var top = h('div', { class: 'topbar' },
-    h('div', { class: 'hello' }, App.nickname ? [h('small', {}, 'Halo,'), h('b', {}, App.nickname), h('span', {}, 'Mau nonton apa hari ini?')] : null),
+  var page = h('div', { class: 'page home' });
+  var used = App.genres.filter(function (g) { return films.some(function (f) { return f.genres.indexOf(g) >= 0; }) && g.trim().toLowerCase() !== '21+' && g.trim().toLowerCase() !== 'extraordinary'; });
+  // bilah atas: pil genre + nobar di kiri, muat ulang + cari + profil di kanan
+  var sel = h('select', { class: 'pillsel', title: 'Pilih genre' }, h('option', { value: '' }, 'Semua genre'), used.map(function (g) { var o = h('option', { value: g }, g); if (state.genre === g) o.selected = true; return o; }));
+  sel.addEventListener('change', function () { state.genre = sel.value || null; state.rerender(); });
+  page.append(h('div', { class: 'topbar2' },
+    h('label', { class: 'pill' }, sel, icon('down', 16)),
+    h('button', { class: 'pill', onclick: function () { UI.go({ t: 'nobar' }); } }, icon('people', 18), 'Nobar'),
     h('div', { class: 'sp' }),
-    h('button', { class: 'iconbtn refbtn' + (App.refreshing ? ' spin' : ''), title: 'Muat ulang', onclick: function () { App.refresh(); } }, icon('refresh', 20)),
-    h('button', { class: 'iconbtn', title: 'Nobar', onclick: function () { UI.go({ t: 'nobar' }); } }, icon('people', 20)),
-    h('button', { class: 'iconbtn', title: 'Cari', onclick: function () { UI.go({ t: 'search' }); } }, icon('search', 20)),
-    h('button', { class: 'iconbtn', title: 'Profil', onclick: function () { UI.go({ t: 'profile' }); } }, avatar(App.nickname, 36)));
-  page.append(top);
+    h('button', { class: 'pill icon' + (App.refreshing ? ' spin' : ''), title: 'Muat ulang', onclick: function () { App.refresh(); } }, icon('refresh', 18)),
+    h('button', { class: 'pill', onclick: function () { UI.go({ t: 'search' }); } }, icon('search', 18), 'Cari'),
+    h('button', { class: 'mebtn', onclick: function () { UI.go({ t: 'profile' }); } }, avatar(App.nickname, 34), h('span', {}, App.nickname || 'Profil'))));
   if (App.netError && films.length) page.append(h('div', { class: 'banner' }, h('span', { class: 'grow' }, 'Tidak ada koneksi. Menampilkan data tersimpan terakhir.'), btn('Coba lagi', null, false, function () { App.refresh(); })));
   if (state.update) page.append(h('div', { class: 'banner up', onclick: function () { aph.open(state.update.url); } }, icon('ext', 18), h('span', { class: 'grow' }, 'Versi ' + state.update.version + ' tersedia. Klik untuk mengunduh.')));
-  var used = App.genres.filter(function (g) { return films.some(function (f) { return f.genres.indexOf(g) >= 0; }) && g.trim().toLowerCase() !== '21+' && g.trim().toLowerCase() !== 'extraordinary'; });
-  if (used.length) {
-    var chips = h('div', { class: 'chips' }, chip('Semua', !state.genre, function () { state.genre = null; state.rerender(); }));
-    used.forEach(function (g) { chips.append(chip(g, state.genre === g, function () { state.genre = g; state.rerender(); })); });
-    page.append(chips);
+  if (!films.length) { page.append(emptyState(App.loaded ? 'Belum ada film.\nTambahkan lewat web Master Stream, lalu tekan Muat ulang.' : 'Memuat data\u2026')); return page; }
+  if (state.genre) {
+    var gl = films.filter(function (f) { return f.genres.indexOf(state.genre) >= 0; });
+    page.append(h('h3', { class: 'sec' }, state.genre + ' \u00b7 ' + gl.length + ' judul'), grid(gl)); return page;
   }
-  if (!films.length) { page.append(emptyState(App.loaded ? 'Belum ada film.\nTambahkan lewat web Master Stream, lalu tekan Muat ulang.' : 'Memuat data…')); return page; }
-  if (state.genre) { page.append(grid(films.filter(function (f) { return f.genres.indexOf(state.genre) >= 0; }))); return page; }
-  var hero = films.find(function (f) { return f.recommended; }) || films[0];
-  page.append(h('div', { class: 'hero', onclick: function () { UI.openFilm(hero); } },
-    posterEl(hero, 640, true), h('div', { class: 'shade' }), h('div', { class: 'tag' }, '◆ SOROTAN'),
-    h('div', { class: 'info' }, h('h2', {}, hero.name), h('p', {}, meta(hero)),
-      h('div', { class: 'acts', onclick: function (e) { e.stopPropagation(); } },
-        btn('PUTAR', 'play', true, function () { UI.play(hero); }),
-        isExtra(hero) ? null : btn(App.favs.has(hero.id) ? 'DI DAFTARKU' : 'DAFTARKU', App.favs.has(hero.id) ? 'check' : 'plus', false, function () { App.toggleFav(hero.id); })))));
+  var pop = films.filter(function (f) { return f.popular; }), rec = films.filter(function (f) { return f.recommended; });
+  var heroList = (pop.length ? pop : rec.length ? rec : films).slice(0, 6);
+  page.append(heroCarousel(heroList, pop.length ? 'Populer' : rec.length ? 'Rekomendasi' : 'Baru Ditambah', state));
   var cont = films.filter(function (f) { var fr = App.frac(App.lastProg(f)); return !App.hiddenCont.has(f.id) && fr >= 0.02 && fr <= 0.95; })
     .sort(function (a, b) { return (App.lastProg(b).ts) - (App.lastProg(a).ts); });
-  if (cont.length) { page.append(sectionTitle('Lanjutkan Menonton'), posterRow(cont, { progress: true, onclick: function (f) { UI.play(f); }, onhide: function (f) { App.hideFromContinue(f); }, sub: 'Lanjutkan' })); }
-  var rec = films.filter(function (f) { return f.recommended; }); if (rec.length) page.append(sectionTitle('Rekomendasi untukmu'), posterRow(rec));
-  var pop = films.filter(function (f) { return f.popular; }); if (pop.length) page.append(sectionTitle('Populer'), posterRow(pop));
-  page.append(sectionTitle('Baru Ditambah'), posterRow(films.slice(0, 20)));
-  used.forEach(function (g) { var l = films.filter(function (f) { return f.genres.indexOf(g) >= 0; }); if (l.length >= 2) page.append(sectionTitle(g), posterRow(l)); });
+  if (cont.length) page.append(rowHead('Lanjutkan Menonton'), posterRow(cont, { progress: true, onclick: function (f) { UI.play(f); }, onhide: function (f) { App.hideFromContinue(f); }, sub: 'Lanjutkan' }));
+  var mv = films.filter(function (f) { return !isSeries(f); }), sr = films.filter(isSeries);
+  var popMv = pop.filter(function (f) { return !isSeries(f); }), popSr = pop.filter(isSeries);
+  if (popMv.length) page.append(rowHead('Populer \u00b7 Movie', popMv), posterRow(popMv));
+  if (popSr.length) page.append(rowHead('Populer \u00b7 Series', popSr), posterRow(popSr));
+  if (rec.length) page.append(rowHead('Rekomendasi untukmu', rec), posterRow(rec));
+  if (mv.length) page.append(rowHead('Baru Ditambah \u00b7 Movie', mv), posterRow(mv.slice(0, 20)));
+  if (sr.length) page.append(rowHead('Baru Ditambah \u00b7 Series', sr), posterRow(sr.slice(0, 20)));
+  used.forEach(function (g) { var l = films.filter(function (f) { return f.genres.indexOf(g) >= 0; }); if (l.length >= 2) page.append(rowHead(g, l), posterRow(l)); });
   return page;
 }
 
@@ -436,6 +476,8 @@ function profileScreen(state) {
     toggle(App.thumbPoster, function (on) { App.set('thumbPoster', on); })));
   set.append(h('div', { class: 'line' }, h('div', { class: 'grow' }, 'Chat melayang saat nobar', h('small', {}, 'Pesan baru tampil transparan di atas video')),
     toggle(App.floatChat, function (on) { App.set('floatChat', on); })));
+  set.append(h('div', { class: 'line' }, h('div', { class: 'grow' }, 'Redam suara film saat mik hidup', h('small', {}, 'Saat nobar dengan mik menyala, suara film dikecilkan agar suara teman lebih jelas')),
+    toggle(App.duck, function (on) { App.set('duck', on); })));
   set.append(h('div', { class: 'line' }, h('div', { class: 'grow' }, 'Suara Bioskop', h('small', {}, 'Penguat bass dan lebar suara (perkiraan)')),
     toggle(App.surround, function (on) { App.set('surround', on); })));
   var eqRow = h('div', { class: 'acts', style: { marginTop: '8px' } }, EQ_PRESETS.map(function (p) {

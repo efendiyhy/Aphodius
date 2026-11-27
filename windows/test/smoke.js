@@ -2,8 +2,8 @@
 /* Uji asap: jalankan renderer di Electron dengan jaringan palsu, telusuri layar, putar video uji, ambil tangkapan layar. */
 const { app, BrowserWindow, session, ipcMain } = require('electron');
 const path = require('path'), fs = require('fs'), http = require('http');
-const OUT = process.env.SMOKE_OUT || '/tmp/smoke';
-app.setPath('userData', fs.mkdtempSync('/tmp/smoke-ud-'));
+const OUT = path.resolve(process.env.SMOKE_OUT || '/tmp/smoke');
+app.setPath('userData', fs.mkdtempSync(path.resolve('/tmp/smoke-ud-')));
 app.commandLine.appendSwitch('no-sandbox');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
@@ -103,7 +103,7 @@ app.whenReady().then(async () => {
   await step('isi nama lalu beranda', async () => {
     await ev(`document.querySelector('.welcome input').value='Tester'; document.querySelector('.welcome .btn').click();`);
     await wait(1500);
-    const t = await ev(`document.querySelector('.hello b') && document.querySelector('.hello b').textContent`);
+    const t = await ev(`document.querySelector('.topbar2 .mebtn span:last-child') && document.querySelector('.topbar2 .mebtn span:last-child').textContent`);
     if (t !== 'Tester') throw new Error('sapaan tidak muncul: ' + t);
     const n = await ev(`document.querySelectorAll('.card').length`); if (n < 3) throw new Error('kartu film kurang: ' + n);
     const ex = await ev(`document.body.innerText.includes('Istimewa')`); if (ex) throw new Error('film Extraordinary bocor di beranda');
@@ -111,11 +111,11 @@ app.whenReady().then(async () => {
   });
   await step('banner pembaruan', async () => { await wait(800); await ev(`render()`); if (!(await ev(`!!document.querySelector('.banner.up')`))) throw new Error('tidak ada banner'); });
   await step('tab Movie/Series/Baru/Daftarku', async () => {
-    for (const [i, nm] of [[2, 'movie'], [3, 'series'], [1, 'new'], [4, 'mylist']]) { await ev(`document.querySelectorAll('.nav')[${i}].click()`); await wait(250); await shot('03-' + nm); }
+    for (const [i, nm] of [[2, 'movie'], [3, 'series'], [1, 'new'], [4, 'mylist']]) { await ev(`document.querySelectorAll('.rnav')[${i}].click()`); await wait(250); await shot('03-' + nm); }
     if (!(await ev(`document.body.innerText.includes('Serial Uji')`)) && false) throw new Error('x');
   });
   await step('detail film + daftarku', async () => {
-    await ev(`document.querySelectorAll('.nav')[0].click()`); await wait(200);
+    await ev(`document.querySelectorAll('.rnav')[0].click()`); await wait(200);
     await ev(`UI.openFilm(App.find('f1'))`); await wait(300);
     await ev(`[...document.querySelectorAll('.acts .btn')].find(b=>/^DAFTARKU/.test(b.textContent)).click()`); await wait(200);
     if (!(await ev(`App.favs.has('f1')`))) throw new Error('favorit tidak tersimpan');
@@ -128,8 +128,8 @@ app.whenReady().then(async () => {
   });
   await step('buat PIN lalu Extraordinary menggantikan Daftarku', async () => {
     await ev(`App.setPin('2468').then(()=>{ App.enableExtra(true); State.stack=[]; State.tab='home'; render(); })`); await wait(400);
-    const label = await ev(`document.querySelectorAll('.nav')[4].textContent`); if (!/Extraordinary/.test(label)) throw new Error('menu tidak berganti: ' + label);
-    await ev(`document.querySelectorAll('.nav')[4].click()`); await wait(300);
+    const label = await ev(`document.querySelectorAll('.rnav')[4].textContent`); if (!/Extraordinary/.test(label)) throw new Error('menu tidak berganti: ' + label);
+    await ev(`document.querySelectorAll('.rnav')[4].click()`); await wait(300);
     if (!(await ev(`document.body.innerText.includes('Istimewa')`))) throw new Error('film Extraordinary tidak tampil'); await shot('07-extra');
     await ev(`UI.openFilm(App.find('x1'))`); await wait(300);
     if (await ev(`[...document.querySelectorAll('.acts .btn')].some(b=>/DAFTARKU/.test(b.textContent))`)) throw new Error('tombol Daftarku muncul pada Extraordinary');
@@ -231,6 +231,58 @@ app.whenReady().then(async () => {
     if (tree.rooms[c].pb.playing !== true) throw new Error('tidak diputar bersamaan setelah semua siap');
     await shot('15-dock');
   });
+  await step('video call: kamera sendiri & video teman tampil stabil di panel chat', async () => {
+    const c = global.__code;
+    await evp(`await Nobar.room.toggleCam(); return true`); await wait(900);
+    if (!(await ev(`Nobar.room.camOn && !!document.querySelector('.dock .vtile[data-uid="uidA"] video')`))) throw new Error('pratinjau kamera tidak tampil: ' + await ev('Nobar.room.voiceError'));
+    // "video teman": aliran kamera palsu kedua dipasang sebagai video uidB
+    // "video teman": kanvas beranimasi (bukan kamera kedua, agar tidak berebut perangkat kamera palsu)
+    await evp(`var c=document.createElement('canvas'); c.width=320; c.height=240; var x=c.getContext('2d'), k=0; window.__cv=setInterval(function(){ k=(k+7)%255; x.fillStyle='rgb('+k+',120,200)'; x.fillRect(0,0,320,240); }, 40); Nobar.room.videos.uidB = c.captureStream(25); return true`);
+    setAt(`rooms/${c}/members/uidB/cam`, true); await wait(800);
+    if (!(await ev(`(function(){ window.__tile = document.querySelector('.dock .vtile[data-uid="uidB"]'); return !!window.__tile })()`))) throw new Error('video teman tidak tampil di panel chat');
+    // pembaruan ruangan beruntun (buffering bolak-balik, chat) tidak boleh membuat video teman berkedip / berhenti
+    for (let i = 0; i < 8; i++) { setAt(`rooms/${c}/members/uidB/buf`, i % 2 === 0); if (i === 3) setAt(`rooms/${c}/chat/${Date.now()}_uidB`, { u: 'uidB', n: 'Teman', m: 'cek video' }); await wait(200); }
+    await wait(400);
+    const st = JSON.parse(await ev(`JSON.stringify({ same: document.querySelector('.dock .vtile[data-uid="uidB"]') === window.__tile, conn: window.__tile.isConnected, paused: window.__tile.querySelector('video').paused, w: window.__tile.querySelector('video').videoWidth })`));
+    if (!st.same || !st.conn || st.paused || !st.w) throw new Error('video teman tidak stabil: ' + JSON.stringify(st));
+    // pastikan gambar benar-benar mengalir (bukan kotak hitam): rata-rata kecerahan piksel kotak video
+    const lum = await ev(`(function(){ var v=window.__tile.querySelector('video'), c=document.createElement('canvas'); c.width=64; c.height=48; var x=c.getContext('2d'); x.drawImage(v,0,0,64,48); var d=x.getImageData(0,0,64,48).data, s=0; for (var i=0;i<d.length;i+=4) s+=d[i]+d[i+1]+d[i+2]; return Math.round(s/(d.length/4)/3); })()`);
+    const cam = await evp(`for (var i=0;i<20;i++){ var t=Nobar.room.voice.stream.getVideoTracks()[0], p=document.querySelector('.dock .vtile[data-uid="uidA"] video'); if (t.readyState==='live' && p && p.videoWidth) return t.readyState+' '+p.videoWidth+' ('+(i*200)+'ms)'; await new Promise(r=>setTimeout(r,200)); } return t.readyState+' '+(p&&p.videoWidth);`);
+    log.push('     kecerahan video teman: ' + lum + ' · kamera sendiri: ' + cam);
+    if (!(lum > 5)) throw new Error('video teman hitam');
+    if (!/^live [1-9]/.test(cam)) throw new Error('kamera sendiri mati: ' + cam);
+    await shot('16-videocall-dock');
+  });
+  await step('video call: video melayang saat chat ditutup, kembali ke panel saat dibuka', async () => {
+    await ev(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'c',bubbles:true}))`); await wait(500);
+    const f = JSON.parse(await ev(`(function(){ var t = document.querySelector('.vfloat .vtile[data-uid="uidB"]'); return JSON.stringify({ ok: !!t, same: t === window.__tile, paused: t && t.querySelector('video').paused }) })()`));
+    if (!f.ok || !f.same || f.paused) throw new Error('video melayang salah: ' + JSON.stringify(f));
+    await shot('17-videocall-float');
+    await ev(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'c',bubbles:true}))`); await wait(500);
+    if (!(await ev(`!!document.querySelector('.dock .vtile[data-uid="uidB"]') && !document.querySelector('.dock .vtile[data-uid="uidB"] video').paused`))) throw new Error('video tidak kembali ke panel');
+  });
+  await step('redam suara film saat mik hidup', async () => {
+    await wait(1500);
+    const r1 = JSON.parse(await ev(`(function(){ var v=document.querySelector('.player video'), u=document.querySelector('.player .vol').value/100; return JSON.stringify({v:v.volume,u:u,mic:Nobar.room.micOn}) })()`));
+    if (!r1.mic || Math.abs(r1.v - r1.u * 0.3) > 0.05) throw new Error('tidak diredam: ' + JSON.stringify(r1));
+    await ev(`Nobar.room.toggleMic()`); await wait(1800);
+    const r2 = JSON.parse(await ev(`(function(){ var v=document.querySelector('.player video'), u=document.querySelector('.player .vol').value/100; return JSON.stringify({v:v.volume,u:u}) })()`));
+    if (Math.abs(r2.v - r2.u) > 0.05) throw new Error('tidak kembali normal: ' + JSON.stringify(r2));
+    if (await ev(`Store.get('vol', 1)`) < 0.5) throw new Error('volume teredam ikut tersimpan');
+    await ev(`Nobar.room.toggleMic()`);
+  });
+  await step('video call: mode meeting di ruang tunggu', async () => {
+    await ev(`Player.close(); State.stack=[]; State.tab='nobar'; render();`); await wait(600);
+    if (!(await ev(`!!document.querySelector('.lobby .vtile[data-uid="uidB"]')`))) throw new Error('video tidak tampil di lobi');
+    await ev(`[...document.querySelectorAll('.lobby .chip')].find(b=>/Perbesar/.test(b.textContent)).click()`); await wait(600);
+    const n = await ev(`document.querySelectorAll('.meet .vtile').length`); if (n < 2) throw new Error('kotak meeting ' + n);
+    await shot('18-meeting');
+    await ev(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`); await wait(400);
+    if (await ev(`!!document.querySelector('.meet')`)) throw new Error('meeting tidak tertutup');
+    if (!(await ev(`!!document.querySelector('.lobby .vtile[data-uid="uidB"]') && !document.querySelector('.lobby .vtile[data-uid="uidB"] video').paused`))) throw new Error('video tidak kembali ke lobi');
+    await shot('19-lobby-video');
+    await ev(`UI.watchRoom(App.find('f2'))`); await wait(1500);
+  });
   await step('nobar: keluarkan peserta lalu tutup ruangan', async () => {
     const c = global.__code;
     await ev(`Nobar.room.kick('uidB')`); await wait(500);
@@ -309,6 +361,15 @@ app.whenReady().then(async () => {
     await ev(`State.stack=[]; State.tab='profile'; render()`); await wait(400);
     const t = await ev(`document.body.innerText`);
     for (const w of ['Tetap di baki', 'Mode TV', 'Hemat memori', 'Bersihkan cache', 'Antrean & Unduhan']) if (t.indexOf(w) < 0) throw new Error('hilang: ' + w);
+  });
+  await step('beranda baru: hero, rail, rating, lihat semua (cek akhir)', async () => {
+    await ev(`State.stack=[]; State.tab='home'; render()`); await wait(500);
+    const r = JSON.parse(await ev(`JSON.stringify({ hero: !!document.querySelector('.hero2 h2'), rail: document.querySelectorAll('.rail .rnav').length, dots: document.querySelectorAll('.hdots button').length, rows: document.querySelectorAll('.rowh').length })`));
+    if (!r.hero || r.rail < 5 || r.rows < 2) throw new Error('beranda: ' + JSON.stringify(r));
+    await shot('20-home-new');
+    await ev(`UI.go({t:'all', title:'Uji', ids:['f1','f2','f3']})`); await wait(300);
+    if ((await ev(`document.querySelectorAll('.grid .card').length`)) !== 3) throw new Error('lihat semua');
+    await ev(`State.stack=[]; render()`);
   });
   await step('EQ/Bioskop tidak error', async () => { await ev(`App.set('surround', true)`); });
   await step('mikrofon WebRTC tersedia', async () => { const r = await ev(`navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{var n=s.getAudioTracks().length; s.getTracks().forEach(t=>t.stop()); return n;}).catch(e=>'err '+e.name)`); if (r !== 1) throw new Error('getUserMedia: ' + r); });

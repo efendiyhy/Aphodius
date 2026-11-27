@@ -120,6 +120,12 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
         onDispose { player.removeListener(al); fx.release() }
     }
     LaunchedEffect(s.surround, s.eq, room?.voiceOn) { fx.apply(s.surround && room?.voiceOn != true, s.eq) }
+    // Redam suara film saat mik nobar hidup agar suara teman lebih jelas (volume ExoPlayer, bukan volume sistem), transisi halus
+    LaunchedEffect(s.duck, room?.voiceOn, room?.micOn) {
+        val target = if (s.duck && room?.let { it.voiceOn && it.micOn } == true) 0.3f else 1f
+        val from = player.volume
+        for (i in 1..10) { player.volume = from + (target - from) * i / 10f; kotlinx.coroutines.delay(50) }
+    }
     var phase by remember { mutableIntStateOf(0) } // 0 memuat, 1 siap, 2 galat
     var error by remember { mutableStateOf("") }
     var errorDetail by remember { mutableStateOf("") }
@@ -550,6 +556,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                         Box(Modifier.padding(horizontal = 12.dp)) { ReactionBar(room) }
                         Spacer(Modifier.height(10.dp))
                         PanelItem(if (s.floatChat) "Chat & reaksi melayang: tampil" else "Chat & reaksi melayang: sembunyi", s.floatChat) { s.updateFloatChat(!s.floatChat) }
+                        PanelItem(if (s.duck) "Redam suara film saat mik hidup: ya" else "Redam suara film saat mik hidup: tidak", s.duck) { s.updateDuck(!s.duck) }
                     }
                     "quality" -> {
                         PanelTitle("Kualitas video")

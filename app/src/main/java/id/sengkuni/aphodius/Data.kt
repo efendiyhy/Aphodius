@@ -179,6 +179,9 @@ class Store(ctx: Context) {
     var floatChat: Boolean
         get() = sp.getBoolean("floatChat", true)
         set(v) { sp.edit().putBoolean("floatChat", v).apply() }
+    var duck: Boolean
+        get() = sp.getBoolean("duck", true)
+        set(v) { sp.edit().putBoolean("duck", v).apply() }
     var thumbPoster: Boolean
         get() = sp.getBoolean("thumbPoster", true)
         set(v) { sp.edit().putBoolean("thumbPoster", v).apply() }
@@ -227,6 +230,7 @@ class AppState(ctx: Context) {
     var allFilms by mutableStateOf<List<Film>>(emptyList())
     var surround by mutableStateOf(store.surround)
     var floatChat by mutableStateOf(store.floatChat)
+    var duck by mutableStateOf(store.duck)
     var skipSec by mutableStateOf(store.skipSec)
     var hiddenCont by mutableStateOf(store.hiddenCont)
     /** Catatan singkat hasil muat ulang ("3 film baru"), hilang sendiri di Beranda. */
@@ -381,6 +385,7 @@ class AppState(ctx: Context) {
         return all.drop(idx + 1).firstOrNull { !it.isSeries } ?: pool.first()
     }
     fun updateFloatChat(b: Boolean) { floatChat = b; store.floatChat = b }
+    fun updateDuck(b: Boolean) { duck = b; store.duck = b }
     fun updateSurround(b: Boolean) { surround = b; store.surround = b }
     fun updateThumbPoster(b: Boolean) { thumbPoster = b; store.thumbPoster = b; Thumbs.enabled = b }
     fun updateEq(l: List<Float>) { eq = l; store.eq = l }

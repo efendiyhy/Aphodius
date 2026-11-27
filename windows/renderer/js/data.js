@@ -54,7 +54,7 @@ var App = {
   adults: false, extra: false,
   quality: Store.get('quality', 0), speed: Store.get('speed', 1), skipSec: Store.get('skipSec', 10),
   cropOn: Store.get('cropOn', false), crop: Store.get('crop', [0, 0, 0, 0]),
-  floatChat: Store.get('floatChat', true), thumbPoster: Store.get('thumbPoster', true), surround: Store.get('surround', false),
+  floatChat: Store.get('floatChat', true), duck: Store.get('duck', true), thumbPoster: Store.get('thumbPoster', true), surround: Store.get('surround', false),
   autoNext: Store.get('autoNext', true), subSize: Store.get('subSize', 24), outDev: Store.get('outDev', ''), intro: Store.get('intro', {}),
   downloads: Store.get('downloads', {}), queue: Store.get('queue', []), trayClose: Store.get('trayClose', false), tvMode: Store.get('tvMode', false), saver: Store.get('saver', false),
   eq: Store.get('eq', EQ_FLAT), hintSeen: Store.get('hintSeen', false), sort: Store.get('sort', 'new'),

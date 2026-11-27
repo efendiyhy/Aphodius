@@ -68,22 +68,81 @@ function chatBox(room, fontSize) {
   return box;
 }
 
-/** Deretan video call (kamera sendiri + peserta yang menyalakan kamera). null bila tidak ada. Elemen video disimpan di room.vels agar tidak berkedip. */
-function videoGrid(room) {
-  var box = h('div', { class: 'vgrid' });
-  var tile = function (uid, stream, name, mine) {
-    var el = room.vels[uid];
-    if (!el) {
-      var v = h('video', { playsinline: true }); v.muted = true; v.autoplay = true; v.srcObject = stream;
-      if (mine) v.style.transform = 'scaleX(-1)';
-      el = h('div', { class: 'vtile' }, v, h('span', {}, name)); room.vels[uid] = el;
-      v.play().catch(function () {});
+/* ---------- Video call ----------
+ * Elemen kotak video disimpan di room.vels dan TIDAK pernah dibuat ulang/dilepas saat layar digambar ulang:
+ * <video> yang dilepas dari halaman otomatis berhenti, itulah penyebab video "hilang-muncul".
+ * Satu kotak hanya bisa ada di satu wadah; wadah yang aktif (lobi / meeting / panel chat / melayang) memanggil syncVideos. */
+function videoTiles(room, all) {
+  var out = [], v = room.voice;
+  if (room.camOn && v && v.preview) out.push({ uid: room.me, name: 'Kamu', mine: true });
+  else if (all && room.voiceOn) out.push({ uid: room.me, name: 'Kamu', mine: true, nocam: true });
+  room.members.forEach(function (m) {
+    if (m.uid === room.me) return;
+    var has = m.cam && room.videos[m.uid];
+    if (has || (all && m.voice)) out.push({ uid: m.uid, name: m.name, nocam: !has });
+  });
+  return out;
+}
+function tileEl(room, t) {
+  var key = t.uid + (t.nocam ? ':a' : ':v');
+  var el = room.vels[key];
+  if (!el) {
+    if (t.nocam) el = h('div', { class: 'vtile av', 'data-uid': t.uid }, avatar(t.name, 64), h('span', {}, t.name));
+    else {
+      var vd = h('video', { playsinline: true }); vd.muted = true; vd.autoplay = true;
+      if (t.mine) vd.style.transform = 'scaleX(-1)';
+      el = h('div', { class: 'vtile', 'data-uid': t.uid }, vd, h('span', {}, t.name));
     }
-    box.append(el);
+    room.vels[key] = el;
+  }
+  var src = t.nocam ? null : t.mine ? room.voice.preview : room.videos[t.uid];
+  var v = el.querySelector('video');
+  if (v && v.srcObject !== src) v.srcObject = src;
+  el.lastChild.textContent = t.name;
+  el.classList.toggle('speaking', !!(room.speaking && room.speaking[t.uid]));
+  return el;
+}
+/** Pasang kotak video ke wadah tanpa melepas yang sudah ada. all = tampilkan juga peserta suara tanpa kamera (mode meeting). */
+function syncVideos(box, room, all) {
+  var want = videoTiles(room, all).map(function (t) { return tileEl(room, t); });
+  Array.prototype.slice.call(box.children).forEach(function (c) { if (want.indexOf(c) < 0) c.remove(); });
+  want.forEach(function (el, i) {
+    if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
+    var v = el.querySelector('video'); if (v && v.paused && v.srcObject) v.play().catch(function () {});
+  });
+  box.style.display = want.length ? '' : 'none';
+  return want.length;
+}
+/** Tombol mik & kamera: hijau = hidup, merah = mati. */
+function callButtons(room) {
+  var micOn = room.voiceOn && room.micOn;
+  return [
+    h('button', { class: 'chip ' + (micOn ? 'g' : 'r'), onclick: function () { micAction(room); } }, icon(micOn ? 'mic' : 'micoff', 14), micOn ? 'Mik hidup' : 'Mik mati'),
+    h('button', { class: 'chip ' + (room.camOn ? 'g' : 'r'), onclick: function () { room.toggleCam(); } }, icon(room.camOn ? 'cam' : 'camoff', 14), room.camOn ? 'Kamera hidup' : 'Kamera mati'),
+  ];
+}
+/** Tampilan meeting: video call layar penuh dengan kotak besar. */
+var Meeting = { open: false };
+function meetingView(room, onClose, onWatch) {
+  var grid = h('div', { class: 'meet-grid' });
+  var bar = h('div', { class: 'meet-bar' });
+  var ov = h('div', { class: 'meet' }, h('div', { class: 'meet-top' }, h('b', {}, 'Video call · ' + room.code), h('div', { class: 'grow' }),
+    h('button', { class: 'iconbtn', title: 'Perkecil (Esc)', onclick: function () { close(); } }, icon('close', 18))), grid, bar);
+  var draw = function () {
+    var n = syncVideos(grid, room, true);
+    grid.style.display = '';
+    grid.className = 'meet-grid n' + Math.min(n, 4);
+    if (!n) grid.append(h('div', { class: 'empty', style: { gridColumn: '1 / -1' } }, 'Nyalakan mik atau kamera untuk memulai video call.'));
+    clear(bar); callButtons(room).forEach(function (b) { bar.append(b); });
+    var cur = room.info ? App.find(room.info.filmId) : null;
+    if (cur) bar.append(btn(room.isHost ? 'TONTON' : 'IKUT TONTON', 'play', true, function () { close(); onWatch(cur); }));
   };
-  if (room.camOn && room.voice && room.voice.stream) tile(room.me, new MediaStream(room.voice.stream.getVideoTracks()), 'Kamu', true);
-  room.members.forEach(function (m) { if (m.uid !== room.me && m.cam && room.videos[m.uid]) tile(m.uid, room.videos[m.uid], m.name, false); });
-  return box.children.length ? box : null;
+  var key = function (e) { if (e.key === 'Escape') { e.stopImmediatePropagation(); e.stopPropagation(); close(); } };
+  var off = room.on(function () { if (room.status === 'closed') return close(); draw(); });
+  function close() { if (!Meeting.open) return; Meeting.open = false; off(); document.removeEventListener('keydown', key, true); ov.remove(); onClose(); }
+  Meeting.open = true;
+  document.addEventListener('keydown', key, true);
+  document.body.append(ov); draw();
 }
 
 function micAction(room) {
@@ -137,7 +196,7 @@ function nobarScreen(state) {
     } }, icon('send', 18)));
   lobby.append(codeBox);
   var offline = h('div', { class: 'gold', style: { fontSize: '12px' } }); lobby.append(offline);
-  var memHost = h('div'); var vidHost = h('div'); var ctlRow = h('div', { class: 'acts' }); var errRow = h('div', { class: 'err' });
+  var memHost = h('div'); var vidHost = h('div', { class: 'vgrid' }); var ctlRow = h('div', { class: 'acts' }); var errRow = h('div', { class: 'err' });
   lobby.append(h('div', { style: { color: 'var(--muted)', fontSize: '12px', fontWeight: 700 } }, ''), memHost, ctlRow, errRow, vidHost);
   var chat = chatBox(room, 16); lobby.append(chat);
   var warn = h('div', { class: 'gold', style: { fontSize: '12px' } }); lobby.append(warn);
@@ -148,13 +207,13 @@ function nobarScreen(state) {
     codeBox.querySelector('.fn').textContent = room.info ? room.info.filmName : 'Memuat…';
     clear(memHost); memHost.append(h('div', { style: { color: 'var(--muted)', fontSize: '12px', fontWeight: 700, marginBottom: '6px' } }, room.members.length + '/' + MAX_MEMBERS + ' bergabung'), memberStrip(room, true));
     clear(ctlRow);
-    var micOn = room.voiceOn && room.micOn;
-    ctlRow.append(h('button', { class: 'chip ' + (micOn ? 'g' : 'r'), onclick: function () { micAction(room); } }, icon(micOn ? 'mic' : 'micoff', 14), micOn ? 'Mik hidup' : 'Mik mati'));
-    ctlRow.append(h('button', { class: 'chip ' + (room.camOn ? 'g' : 'r'), onclick: function () { room.toggleCam(); } }, icon(room.camOn ? 'cam' : 'camoff', 14), room.camOn ? 'Kamera hidup' : 'Kamera mati'));
+    callButtons(room).forEach(function (b) { ctlRow.append(b); });
+    ctlRow.append(chip('Perbesar video call', false, function () { meetingView(room, draw, function (c) { UI.watchRoom(c); }); }));
     if (room.isHost) ctlRow.append(chip(room.info && room.info.ctl === 'all' ? 'Semua boleh kendali: ya' : 'Semua boleh kendali: tidak', room.info && room.info.ctl === 'all', function () { room.setControl(!(room.info && room.info.ctl === 'all')); }));
     else ctlRow.append(h('span', { style: { color: 'var(--subtle)', fontSize: '12px', alignSelf: 'center' } }, room.info && room.info.ctl === 'all' ? 'Semua boleh mengendalikan' : 'Hanya host yang mengendalikan'));
     errRow.textContent = room.voiceError || '';
-    clear(vidHost); var vg = videoGrid(room); if (vg) vidHost.append(vg);
+    // saat pemutar/meeting terbuka, video ditampilkan di sana; lobi tidak boleh ikut mengambil kotaknya
+    if (!Player.cur && !Meeting.open) syncVideos(vidHost, room);
     var cur = room.info ? App.find(room.info.filmId) : null;
     warn.textContent = room.info && !cur ? 'Film ini perlu fitur Adults/Extraordinary yang aktif di profilmu. Aktifkan dulu di Profil untuk ikut menonton; chat dan suara tetap jalan.' : '';
     clear(foot);
