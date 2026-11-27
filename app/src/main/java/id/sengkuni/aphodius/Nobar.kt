@@ -20,6 +20,15 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.webrtc.AudioSource
 import org.webrtc.AudioTrack
+import org.webrtc.Camera2Enumerator
+import org.webrtc.CameraVideoCapturer
+import org.webrtc.DefaultVideoDecoderFactory
+import org.webrtc.DefaultVideoEncoderFactory
+import org.webrtc.EglBase
+import org.webrtc.RtpTransceiver
+import org.webrtc.SurfaceTextureHelper
+import org.webrtc.VideoSource
+import org.webrtc.VideoTrack
 import org.webrtc.DataChannel
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
@@ -55,9 +64,9 @@ data class NbInfo(val host: String, val filmId: String, val filmName: String, va
 data class NbPb(val playing: Boolean, val pos: Long, val at: Long, val seq: Long, val by: String) {
     val stamp: String get() = "${seq}_$by"
 }
-data class NbMember(val uid: String, val name: String, val seen: Long, val voice: Boolean, val mic: Boolean, val buf: Boolean = true)
+data class NbMember(val uid: String, val name: String, val seen: Long, val voice: Boolean, val mic: Boolean, val buf: Boolean = true, val cam: Boolean = false)
 data class NbHist(val code: String, val filmId: String, val filmName: String, val host: Boolean)
-data class NbMsg(val id: String, val uid: String, val name: String, val text: String, val react: Boolean = false)
+data class NbMsg(val id: String, val uid: String, val name: String, val text: String, val react: Boolean = false, val q: String = "", val qn: String = "", val qm: String = "")
 
 /** Akses REST Firebase: login anonim, pencarian URL database, request biasa. */
 class Fb(ctx: Context) {
@@ -180,6 +189,10 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
     /** "connecting", "online", "offline", "closed" */
     var status by mutableStateOf("connecting")
     var voiceOn by mutableStateOf(false)
+    var camOn by mutableStateOf(false)
+    /** Video peserta lain (kunci = uid) dan pratinjau kamera sendiri. */
+    val videos = mutableStateMapOf<String, VideoTrack>()
+    var localVideo by mutableStateOf<VideoTrack?>(null)
     var micOn by mutableStateOf(false)
     val peerState = mutableStateMapOf<String, String>()
     private var voice: VoiceEngine? = null
@@ -197,7 +210,7 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
     }
 
     private fun memberJson(): JSONObject = JSONObject()
-        .put("name", nick().ifBlank { "Tamu" }).put("seen", SV).put("voice", voiceOn).put("mic", voiceOn && micOn).put("buf", myBuf)
+        .put("name", nick().ifBlank { "Tamu" }).put("seen", SV).put("voice", voiceOn).put("mic", voiceOn && micOn).put("buf", myBuf).put("cam", camOn && voiceOn)
 
     private suspend fun heartbeat() {
         runCatching {
@@ -230,7 +243,7 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
     fun leave(deleteRoom: Boolean = false) {
         val v = voice; voice = null
         v?.stop()
-        voiceOn = false
+        voiceOn = false; resetVideo()
         streamJob?.cancel(); beatJob?.cancel()
         val host = isHost; val c = code; val u = me
         Thread {
@@ -290,8 +303,10 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
     }
 
     private fun onHostClosed() {
-        val v = voice; voice = null; v?.stop(); voiceOn = false
+        val v = voice; voice = null; v?.stop(); voiceOn = false; resetVideo()
     }
+
+    private fun resetVideo() { camOn = false; localVideo = null; videos.clear() }
 
     private fun setAt(path: String, value: Any?) {
         val segs = path.trim('/').split('/').filter { it.isNotEmpty() }
@@ -317,7 +332,7 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
         val ms = ArrayList<NbMember>()
         r.optJSONObject("members")?.let { m ->
             m.keys().forEach { k ->
-                m.optJSONObject(k)?.let { o -> ms.add(NbMember(k, o.optString("name", "Tamu"), o.optLong("seen"), o.optBoolean("voice"), o.optBoolean("mic"), o.optBoolean("buf", true))) }
+                m.optJSONObject(k)?.let { o -> ms.add(NbMember(k, o.optString("name", "Tamu"), o.optLong("seen"), o.optBoolean("voice"), o.optBoolean("mic"), o.optBoolean("buf", true), o.optBoolean("cam"))) }
             }
         }
         val h = info?.host
@@ -328,7 +343,7 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
             c.keys().asSequence().sorted().toList().takeLast(160).forEach { k ->
                 c.optJSONObject(k)?.let { o ->
                     val isR = o.optString("k") == "r"
-                    val m = NbMsg(k, o.optString("u"), o.optString("n"), o.optString("m"), isR)
+                    val m = NbMsg(k, o.optString("u"), o.optString("n"), o.optString("m"), isR, o.optString("q"), o.optString("qn"), o.optString("qm"))
                     if (isR) rs.add(m) else cs.add(m)
                 }
             }
@@ -369,11 +384,13 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
         info = info?.copy(ctl = if (all) "all" else "host")
     }
 
-    fun send(text: String) {
+    fun send(text: String, reply: NbMsg? = null) {
         val t = text.trim().take(300)
         if (t.isEmpty()) return
         val id = "${System.currentTimeMillis()}_${me.take(4)}"
-        val body = JSONObject().put("u", me).put("n", nick().ifBlank { "Tamu" }).put("m", t).toString()
+        val j = JSONObject().put("u", me).put("n", nick().ifBlank { "Tamu" }).put("m", t)
+        if (reply != null) j.put("q", reply.id).put("qn", reply.name.take(30)).put("qm", reply.text.take(80))
+        val body = j.toString()
         scope.launch { runCatching { fb.req("PUT", "rooms/$code/chat/$id", body) } }
     }
 
@@ -442,17 +459,32 @@ class NobarRoom(private val fb: Fb, val code: String, private val nick: () -> St
         scope.launch { heartbeat() }
     }
 
+    /** Video call: nyalakan kamera (suara ikut aktif). Peserta lain melihatnya lewat sambungan WebRTC yang sama. */
+    fun enableCam() {
+        if (voice == null) enableVoice()
+        val v = voice ?: return
+        camOn = true
+        v.setCam(true)
+        scope.launch { heartbeat() }
+    }
+
+    fun disableCam() {
+        camOn = false
+        voice?.setCam(false)
+        scope.launch { heartbeat() }
+    }
+
     var voiceError by mutableStateOf("")
     internal fun voiceFailed(msg: String) {
         voiceError = "Suara gagal: $msg"
-        voice = null; voiceOn = false; micOn = false
+        voice = null; voiceOn = false; micOn = false; resetVideo()
     }
 
     fun disableVoice() {
         val v = voice ?: return
         voice = null
         v.stop()
-        voiceOn = false; micOn = false
+        voiceOn = false; micOn = false; resetVideo()
         peerState.clear()
         scope.launch { heartbeat() }
     }
@@ -464,6 +496,10 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
     private var factory: PeerConnectionFactory? = null
     private var source: AudioSource? = null
     private var track: AudioTrack? = null
+    private var vTrack: VideoTrack? = null
+    private var vSource: VideoSource? = null
+    private var capturer: CameraVideoCapturer? = null
+    private var helper: SurfaceTextureHelper? = null
     private val peers = HashMap<String, PeerConnection>()
     private val remoteSet = HashSet<String>()
     private val pending = HashMap<String, MutableList<IceCandidate>>()
@@ -502,7 +538,11 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
                     .setUseHardwareNoiseSuppressor(false)
                     .createAudioDeviceModule()
                 CrashLog.mark(ctx, "membuat pabrik WebRTC")
-                val f = PeerConnectionFactory.builder().setAudioDeviceModule(adm).createPeerConnectionFactory()
+                val egl = Rtc.egl.eglBaseContext
+                val f = PeerConnectionFactory.builder().setAudioDeviceModule(adm)
+                    .setVideoEncoderFactory(DefaultVideoEncoderFactory(egl, true, true))
+                    .setVideoDecoderFactory(DefaultVideoDecoderFactory(egl))
+                    .createPeerConnectionFactory()
                 adm.release()
                 factory = f
                 CrashLog.mark(ctx, "membuat mikrofon")
@@ -529,6 +569,42 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
 
     fun setMic(on: Boolean) { post { track?.setEnabled(on) } }
 
+    /** Nyalakan/matikan kamera lalu sambung ulang semua peserta. shortcut: renegosiasi = sambungan baru (ada jeda singkat), upgrade ke renegotiation bila mengganggu. */
+    fun setCam(on: Boolean) {
+        post {
+            if (stopped) return@post
+            if (on && vTrack == null) {
+                try {
+                    val f = factory ?: return@post
+                    val en = Camera2Enumerator(ctx)
+                    val name = en.deviceNames.firstOrNull { en.isFrontFacing(it) } ?: en.deviceNames.firstOrNull() ?: error("kamera tidak ditemukan")
+                    val th = SurfaceTextureHelper.create("cam", Rtc.egl.eglBaseContext)
+                    val src = f.createVideoSource(false)
+                    val cap = en.createCapturer(name, null) ?: error("kamera tidak bisa dibuka")
+                    cap.initialize(th, ctx, src.capturerObserver)
+                    cap.startCapture(640, 480, 24)
+                    helper = th; vSource = src; capturer = cap
+                    vTrack = f.createVideoTrack("cam", src).also { room.localVideo = it }
+                } catch (t: Throwable) {
+                    stopCam(); room.camOn = false
+                    room.voiceError = "Kamera gagal: ${t.message ?: t.javaClass.simpleName}"
+                    return@post
+                }
+            } else if (!on) stopCam()
+            peers.keys.toList().forEach { connect(it) }
+        }
+    }
+
+    private fun stopCam() {
+        room.localVideo = null
+        val t = vTrack; vTrack = null
+        if (t == null && capturer == null) return
+        Thread.sleep(300) // beri waktu UI melepas renderer sebelum track dibuang
+        runCatching { capturer?.stopCapture() }; runCatching { capturer?.dispose() }; capturer = null
+        runCatching { t?.dispose() }; runCatching { vSource?.dispose() }; vSource = null
+        runCatching { helper?.dispose() }; helper = null
+    }
+
     private fun newPc(uid: String): PeerConnection? {
         val f = factory ?: return null
         val cfg = PeerConnection.RTCConfiguration(ice).apply {
@@ -536,7 +612,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
             continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
         }
         peers.remove(uid)?.close()
-        remoteSet.remove(uid); pending.remove(uid)
+        remoteSet.remove(uid); pending.remove(uid); room.videos.remove(uid)
         val pc = f.createPeerConnection(cfg, object : PeerConnection.Observer {
             override fun onSignalingChange(s: PeerConnection.SignalingState?) {}
             override fun onIceConnectionChange(s: PeerConnection.IceConnectionState?) {}
@@ -551,6 +627,10 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
             override fun onRemoveStream(s: MediaStream?) {}
             override fun onDataChannel(d: DataChannel?) {}
             override fun onRenegotiationNeeded() {}
+            override fun onTrack(t: RtpTransceiver?) {
+                val tr = t?.receiver?.track()
+                if (tr is VideoTrack) room.videos[uid] = tr
+            }
             override fun onConnectionChange(s: PeerConnection.PeerConnectionState?) {
                 room.peerState[uid] = when (s) {
                     PeerConnection.PeerConnectionState.CONNECTED -> "ok"
@@ -561,6 +641,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
             }
         }) ?: return null
         track?.let { pc.addTrack(it, listOf("s0")) }
+        vTrack?.let { pc.addTrack(it, listOf("s0")) }
         peers[uid] = pc
         room.peerState[uid] = "menyambung"
         return pc
@@ -569,7 +650,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
     /** Kita yang menawarkan koneksi (kita yang baru menyalakan suara). */
     private fun connect(uid: String) {
         val pc = newPc(uid) ?: return
-        val mc = MediaConstraints().apply { mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true")) }
+        val mc = MediaConstraints().apply { mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true")); mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true")) }
         pc.createOffer(object : Sdp() {
             override fun onCreateSuccess(d: SessionDescription?) {
                 if (d == null) return
@@ -640,6 +721,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
         stopped = true
         post {
             runCatching { peers.values.forEach { it.close() }; peers.clear() }
+            stopCam()
             runCatching { track?.dispose() }
             runCatching { source?.dispose() }
             runCatching { factory?.dispose() }
@@ -650,6 +732,9 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
 
     companion object { @Volatile private var inited = false }
 }
+
+/** EGL bersama untuk codec dan renderer video WebRTC. */
+object Rtc { val egl: EglBase by lazy { EglBase.create() } }
 
 /** Pintu masuk fitur nobar untuk UI. */
 class Nobar(ctx: Context) {

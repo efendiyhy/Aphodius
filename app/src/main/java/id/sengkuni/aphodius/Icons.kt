@@ -46,6 +46,8 @@ object Ic {
     val LockOpen by lazy { stroke("lockopen", "M6 11h12v9H6zM8 11V8a4 4 0 0 1 7.5-1.5") }
     val Mic by lazy { stroke("mic", "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3") }
     val MicOff by lazy { stroke("micoff", "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M3 3l18 18") }
+    val Cam by lazy { stroke("cam", "M3 7h12v10H3zM15 11l6-4v10l-6-4") }
+    val CamOff by lazy { stroke("camoff", "M3 7h12v10H3zM15 11l6-4v10l-6-4M3 3l18 18") }
     val Chat by lazy { stroke("chat", "M4 5h16v11H9l-5 4z") }
     val People by lazy { stroke("people", "M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20c0-3 3-5 6-5s6 2 6 5M14 15c4 0 8 1 8 5") }
     val Copy by lazy { stroke("copy", "M9 9h11v11H9zM5 15V4h11") }

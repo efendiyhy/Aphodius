@@ -33,22 +33,57 @@ function reactionBar(room) {
 function chatBox(room, fontSize) {
   var list = h('div', { class: 'chatlist', style: { fontSize: (fontSize || 16) + 'px' } });
   var inp = h('input', { placeholder: 'Tulis pesan…', maxlength: 300 });
-  var send = function () { var v = inp.value; if (!v.trim()) return; room.send(v); inp.value = ''; /* keyboard tetap, fokus dipertahankan */ };
+  var replyTo = null;
+  var bar = h('div', { class: 'replybar', style: { display: 'none' } });
+  var setReply = function (m) {
+    replyTo = m; clear(bar);
+    bar.style.display = m ? 'flex' : 'none';
+    if (m) bar.append(h('div', { class: 'grow' }, h('b', {}, 'Membalas ' + m.name), h('div', { class: 'q' }, m.text)),
+      h('button', { class: 'iconbtn', title: 'Batal membalas', onclick: function () { setReply(null); } }, icon('close', 14)));
+    inp.focus();
+  };
+  var send = function () { var v = inp.value; if (!v.trim()) return; room.send(v, replyTo); inp.value = ''; setReply(null); /* fokus dipertahankan */ };
   inp.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') send(); });
-  var box = h('div', { class: 'chatbox' }, list, h('div', { class: 'chatin' }, inp, h('button', { class: 'iconbtn', onclick: function () { send(); inp.focus(); } }, icon('send', 18))));
+  var box = h('div', { class: 'chatbox' }, list, bar, h('div', { class: 'chatin' }, inp, h('button', { class: 'iconbtn', onclick: function () { send(); inp.focus(); } }, icon('send', 18))));
   var lastKey = '';
+  var toBottom = function () { list.scrollTop = list.scrollHeight; };
   var draw = function () {
     var key = room.chat.length + ':' + (room.chat.length ? room.chat[room.chat.length - 1].id : '');
     if (key === lastKey) return; lastKey = key;
-    var atEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 40;
     clear(list);
-    if (!room.chat.length) list.append(h('div', { style: { color: 'var(--subtle)' } }, 'Belum ada pesan. Sapa temanmu!'));
-    room.chat.forEach(function (m) { list.append(h('div', { class: 'msg ' + (m.uid === room.me ? 'me' : 'o') }, h('b', {}, m.name), m.text)); });
-    if (atEnd || true) list.scrollTop = list.scrollHeight;
+    if (!room.chat.length) list.append(h('div', { style: { color: 'var(--subtle)' } }, 'Belum ada pesan. Sapa temanmu! Arahkan kursor ke pesan lalu klik ↩ untuk membalas.'));
+    room.chat.forEach(function (m) {
+      var mine = m.uid === room.me;
+      var b = h('div', { class: 'bub ' + (mine ? 'me' : 'o') });
+      if (!mine) b.append(h('b', {}, m.name));
+      if (m.q) b.append(h('div', { class: 'quote' }, h('b', {}, m.qn), h('div', {}, m.qm)));
+      b.append(h('div', { class: 'tx' }, m.text), h('button', { class: 'rep', title: 'Balas', onclick: function () { setReply(m); } }, '↩'));
+      list.append(h('div', { class: 'brow ' + (mine ? 'me' : 'o') }, b));
+    });
+    toBottom(); requestAnimationFrame(toBottom); // selalu di pesan terbaru
   };
   draw();
+  setTimeout(toBottom, 60); // saat kotak baru dipasang ke halaman
   box.refresh = draw; box.input = inp;
   return box;
+}
+
+/** Deretan video call (kamera sendiri + peserta yang menyalakan kamera). null bila tidak ada. Elemen video disimpan di room.vels agar tidak berkedip. */
+function videoGrid(room) {
+  var box = h('div', { class: 'vgrid' });
+  var tile = function (uid, stream, name, mine) {
+    var el = room.vels[uid];
+    if (!el) {
+      var v = h('video', { playsinline: true }); v.muted = true; v.autoplay = true; v.srcObject = stream;
+      if (mine) v.style.transform = 'scaleX(-1)';
+      el = h('div', { class: 'vtile' }, v, h('span', {}, name)); room.vels[uid] = el;
+      v.play().catch(function () {});
+    }
+    box.append(el);
+  };
+  if (room.camOn && room.voice && room.voice.stream) tile(room.me, new MediaStream(room.voice.stream.getVideoTracks()), 'Kamu', true);
+  room.members.forEach(function (m) { if (m.uid !== room.me && m.cam && room.videos[m.uid]) tile(m.uid, room.videos[m.uid], m.name, false); });
+  return box.children.length ? box : null;
 }
 
 function micAction(room) {
@@ -102,8 +137,8 @@ function nobarScreen(state) {
     } }, icon('send', 18)));
   lobby.append(codeBox);
   var offline = h('div', { class: 'gold', style: { fontSize: '12px' } }); lobby.append(offline);
-  var memHost = h('div'); var ctlRow = h('div', { class: 'acts' }); var errRow = h('div', { class: 'err' });
-  lobby.append(h('div', { style: { color: 'var(--muted)', fontSize: '12px', fontWeight: 700 } }, ''), memHost, ctlRow, errRow);
+  var memHost = h('div'); var vidHost = h('div'); var ctlRow = h('div', { class: 'acts' }); var errRow = h('div', { class: 'err' });
+  lobby.append(h('div', { style: { color: 'var(--muted)', fontSize: '12px', fontWeight: 700 } }, ''), memHost, ctlRow, errRow, vidHost);
   var chat = chatBox(room, 16); lobby.append(chat);
   var warn = h('div', { class: 'gold', style: { fontSize: '12px' } }); lobby.append(warn);
   var foot = h('div'); lobby.append(foot);
@@ -114,10 +149,12 @@ function nobarScreen(state) {
     clear(memHost); memHost.append(h('div', { style: { color: 'var(--muted)', fontSize: '12px', fontWeight: 700, marginBottom: '6px' } }, room.members.length + '/' + MAX_MEMBERS + ' bergabung'), memberStrip(room, true));
     clear(ctlRow);
     ctlRow.append(chip(!room.voiceOn ? 'Nyalakan suara' : room.micOn ? 'Mik aktif' : 'Mik mati', room.voiceOn && room.micOn, function () { micAction(room); }));
+    ctlRow.append(chip(room.camOn ? 'Kamera aktif' : 'Nyalakan kamera', room.camOn, function () { room.toggleCam(); }));
     if (room.voiceOn) ctlRow.append(chip('Matikan suara', false, function () { room.disableVoice(); }));
     if (room.isHost) ctlRow.append(chip(room.info && room.info.ctl === 'all' ? 'Semua boleh kendali: ya' : 'Semua boleh kendali: tidak', room.info && room.info.ctl === 'all', function () { room.setControl(!(room.info && room.info.ctl === 'all')); }));
     else ctlRow.append(h('span', { style: { color: 'var(--subtle)', fontSize: '12px', alignSelf: 'center' } }, room.info && room.info.ctl === 'all' ? 'Semua boleh mengendalikan' : 'Hanya host yang mengendalikan'));
     errRow.textContent = room.voiceError || '';
+    clear(vidHost); var vg = videoGrid(room); if (vg) vidHost.append(vg);
     var cur = room.info ? App.find(room.info.filmId) : null;
     warn.textContent = room.info && !cur ? 'Film ini perlu fitur Adults/Extraordinary yang aktif di profilmu. Aktifkan dulu di Profil untuk ikut menonton; chat dan suara tetap jalan.' : '';
     clear(foot);

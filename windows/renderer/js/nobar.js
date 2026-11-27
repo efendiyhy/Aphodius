@@ -83,7 +83,7 @@ function NobarRoom(code, nick, onEnd) {
   this.info = null; this.pb = { playing: false, pos: 0, at: 0, seq: 0, by: '' };
   this.members = []; this.chat = []; this.reactions = [];
   this.kicked = false; this.myBuf = true; this.status = 'connecting';
-  this.voiceOn = false; this.micOn = false; this.voiceError = ''; this.peerState = {};
+  this.voiceOn = false; this.micOn = false; this.camOn = false; this.videos = {}; this.vels = {}; this.voiceError = ''; this.peerState = {};
   this.voice = null; this.closed = false; this.abort = null; this.beat = null; this.listeners = new Set();
   this.me = Fb.uid;
 }
@@ -106,7 +106,7 @@ NobarRoom.prototype = {
   stamp: function (p) { return p.seq + '_' + p.by; },
 
   memberBody: function () {
-    return JSON.stringify({ name: (this.nick() || '').trim() || 'Tamu', seen: SV, voice: this.voiceOn, mic: this.voiceOn && this.micOn, buf: this.myBuf });
+    return JSON.stringify({ name: (this.nick() || '').trim() || 'Tamu', seen: SV, voice: this.voiceOn, mic: this.voiceOn && this.micOn, buf: this.myBuf, cam: this.voiceOn && this.camOn });
   },
   async heartbeat() {
     try {
@@ -217,7 +217,7 @@ NobarRoom.prototype = {
     var m = r.members || {};
     Object.keys(m).forEach(function (k) {
       var o = m[k]; if (!o || typeof o !== 'object') return;
-      ms.push({ uid: k, name: o.name || 'Tamu', seen: Number(o.seen) || 0, voice: o.voice === true, mic: o.mic === true, buf: o.buf !== false });
+      ms.push({ uid: k, name: o.name || 'Tamu', seen: Number(o.seen) || 0, voice: o.voice === true, mic: o.mic === true, buf: o.buf !== false, cam: o.cam === true });
     });
     var host = this.info && this.info.host;
     ms.sort(function (a, b) { return ((a.uid !== host) - (b.uid !== host)) || a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
@@ -227,7 +227,7 @@ NobarRoom.prototype = {
     Object.keys(c).sort().slice(-160).forEach(function (k) {
       var o = c[k]; if (!o) return;
       var isR = o.k === 'r';
-      var msg = { id: k, uid: o.u || '', name: o.n || '', text: o.m || '', react: isR };
+      var msg = { id: k, uid: o.u || '', name: o.n || '', text: o.m || '', react: isR, q: o.q || '', qn: o.qn || '', qm: o.qm || '' };
       (isR ? rs : cs).push(msg);
     });
     var lastC = this.chat.length ? this.chat[this.chat.length - 1].id : null;
@@ -271,9 +271,11 @@ NobarRoom.prototype = {
     this.info = Object.assign({}, this.info, { ctl: all ? 'all' : 'host' }); this.emit();
   },
   _id: function () { return Date.now() + '_' + this.me.slice(0, 4); },
-  send: function (text) {
+  send: function (text, reply) {
     var t = String(text).trim().slice(0, 300); if (!t) return;
-    this.put('chat/' + this._id(), JSON.stringify({ u: this.me, n: (this.nick() || '').trim() || 'Tamu', m: t }));
+    var b = { u: this.me, n: (this.nick() || '').trim() || 'Tamu', m: t };
+    if (reply) { b.q = reply.id; b.qn = reply.name.slice(0, 30); b.qm = reply.text.slice(0, 80); }
+    this.put('chat/' + this._id(), JSON.stringify(b));
   },
   react: function (emoji) {
     this.put('chat/' + this._id(), JSON.stringify({ u: this.me, n: (this.nick() || '').trim() || 'Tamu', m: String(emoji).slice(0, 8), k: 'r' }));
@@ -319,10 +321,22 @@ NobarRoom.prototype = {
   voiceFailed: function (msg) {
     this.voiceError = 'Suara gagal: ' + msg; this.stopVoiceEngine(); this.voiceOn = false; this.micOn = false; this.emit();
   },
-  stopVoiceEngine: function () { var v = this.voice; this.voice = null; if (v) v.stop(); },
+  stopVoiceEngine: function () { var v = this.voice; this.voice = null; this.camOn = false; this.videos = {}; this.vels = {}; if (v) v.stop(); },
   disableVoice: function () {
     if (!this.voice) return;
     this.stopVoiceEngine(); this.voiceOn = false; this.micOn = false; this.peerState = {}; this.heartbeat(); this.emit();
+  },
+  /** Video call: nyalakan/matikan kamera (suara ikut aktif). */
+  async toggleCam() {
+    try {
+      if (!this.voiceOn) await this.enableVoice();
+      if (!this.voice) return;
+      var on = !this.camOn;
+      await this.voice.setCam(on);
+      this.camOn = on; delete this.vels[this.me]; this.heartbeat(); this.emit();
+    } catch (e) {
+      this.camOn = false; this.voiceError = 'Kamera gagal: ' + (e && e.name === 'NotAllowedError' ? 'izin kamera ditolak' : (e && e.message) || e); this.emit();
+    }
   },
 };
 
@@ -359,10 +373,22 @@ VoiceEngine.prototype = {
     } catch (e) { /* tanpa indikator */ }
   },
   setMic: function (on) { if (this.stream) this.stream.getAudioTracks().forEach(function (t) { t.enabled = on; }); },
+  /** Nyalakan/matikan kamera lalu sambung ulang semua peserta. shortcut: renegosiasi = sambungan baru (jeda singkat), upgrade ke renegotiation bila mengganggu. */
+  async setCam(on) {
+    if (!this.stream || this.stopped) return;
+    var self = this;
+    if (on) {
+      var vs = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } }, audio: false });
+      vs.getVideoTracks().forEach(function (t) { self.stream.addTrack(t); });
+    } else {
+      this.stream.getVideoTracks().forEach(function (t) { t.stop(); self.stream.removeTrack(t); });
+    }
+    Object.keys(this.peers).forEach(function (uid) { self.connect(uid); });
+  },
   newPc: function (uid) {
     var self = this, room = this.room;
     if (this.peers[uid]) try { this.peers[uid].close(); } catch (e) {}
-    delete this.remoteSet[uid]; delete this.pending[uid];
+    delete this.remoteSet[uid]; delete this.pending[uid]; delete room.videos[uid]; delete room.vels[uid];
     var pc = new RTCPeerConnection({ iceServers: this.ice });
     if (this.stream) this.stream.getTracks().forEach(function (t) { pc.addTrack(t, self.stream); });
     pc.onicecandidate = function (e) {
@@ -370,6 +396,7 @@ VoiceEngine.prototype = {
       room.sendSig(uid, 'ice', JSON.stringify({ mid: e.candidate.sdpMid, idx: e.candidate.sdpMLineIndex, c: e.candidate.candidate }));
     };
     pc.ontrack = function (e) {
+      if (e.track.kind === 'video') { room.videos[uid] = new MediaStream([e.track]); room.emit(); return; }
       var a = self.audios[uid];
       if (!a) { a = new Audio(); a.autoplay = true; self.audios[uid] = a; }
       a.srcObject = e.streams[0] || new MediaStream([e.track]);
@@ -389,7 +416,7 @@ VoiceEngine.prototype = {
   async connect(uid) {
     var pc = this.newPc(uid);
     try {
-      var offer = await pc.createOffer({ offerToReceiveAudio: true });
+      var offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
       await pc.setLocalDescription(offer);
       this.room.sendSig(uid, 'offer', offer.sdp);
     } catch (e) { /* abaikan */ }
@@ -429,7 +456,7 @@ VoiceEngine.prototype = {
     Object.keys(this.peers).forEach(function (k) {
       if (live[k]) return;
       try { self.peers[k].close(); } catch (e) {}
-      delete self.peers[k]; delete self.remoteSet[k]; delete self.pending[k]; delete room.peerState[k];
+      delete self.peers[k]; delete self.remoteSet[k]; delete self.pending[k]; delete room.peerState[k]; delete room.videos[k]; delete room.vels[k];
       if (self.audios[k]) { self.audios[k].srcObject = null; delete self.audios[k]; }
     });
   },

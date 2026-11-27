@@ -144,6 +144,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
     var unlockTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(unlockTick) { if (unlockTick > 0) { showUnlock = true; delay(2500); showUnlock = false } }
     val micAct = if (room != null) rememberMicAction(room) else null
+    val camAct = if (room != null) rememberCamAction(room) else null
     var editing by remember { mutableStateOf(false) }
     var resize by remember { mutableIntStateOf(0) }
     var hud by remember { mutableStateOf<String?>(null) }
@@ -508,6 +509,7 @@ fun PlayerScreen(film: Film, next: Film?, s: AppState, onBack: () -> Unit, onNex
                         BarButton(Ic.Moon, "Timer tidur" + if (sleepEnd > 0) " · ${((sleepEnd - System.currentTimeMillis()) / 60000 + 1)} mnt" else "") { panel = "sleep" }
                         BarButton(Ic.Crop, "Crop · " + (if (s.cropOn && s.hasCrop) "Aktif" else "Mati")) { panel = "crop" }
                         if (room != null) BarButton(Ic.Star, "Reaksi") { panel = "react" }
+                        if (room != null) BarButton(if (room.camOn) Ic.Cam else Ic.CamOff, if (room.camOn) "Kamera aktif" else "Kamera") { camAct?.invoke() }
                         if (room != null) BarButton(if (room.voiceOn && room.micOn) Ic.Mic else Ic.MicOff, if (!room.voiceOn) "Suara" else if (room.micOn) "Mik aktif" else "Mik mati") { micAct?.invoke() }
                         else if (next != null) BarButton(Ic.Next, "Berikutnya") { panel = "next" }
                     }

@@ -386,6 +386,7 @@ function createPlayer(opts) {
       isEp ? pbtn('skip', 'Intro', panel === 'intro', function () { togglePanel('intro'); }) : null,
       pbtn('ext', 'PiP', !!document.pictureInPictureElement, togglePip),
       room ? pbtn('star', 'Reaksi', panel === 'react', function () { togglePanel('react'); }) : null,
+      room ? pbtn(room.camOn ? 'cam' : 'camoff', room.camOn ? 'Kamera aktif' : 'Kamera', room.camOn, function () { room.toggleCam(); }) : null,
       room ? pbtn(room.voiceOn && room.micOn ? 'mic' : 'micoff', !room.voiceOn ? 'Suara' : room.micOn ? 'Mik aktif' : 'Mik mati', room.voiceOn && room.micOn, function () { micAction(room); }) : null,
       next ? pbtn('next', 'Berikutnya', panel === 'next', function () { togglePanel('next'); }) : null,
       pbtn('lock', 'Kunci', false, function () { locked = true; panel = ''; renderCtl(); showHud('Layar dikunci. Tekan tombol gembok untuk membuka'); }),
@@ -493,6 +494,7 @@ function createPlayer(opts) {
     dockEl.append(h('div', { style: { display: 'flex', alignItems: 'center' } }, h('div', { style: { flex: 1 } }, h('b', {}, 'Nobar · ' + room.code), h('div', { style: { color: 'var(--muted)', fontSize: '12px' } }, room.members.length + ' dari ' + MAX_MEMBERS + ' bergabung')),
       h('button', { class: 'iconbtn', onclick: function () { chatOpen = false; renderDock(); renderCtl(); } }, icon('close', 16))));
     dockEl.append(memberStrip(room, true));
+    var vg = videoGrid(room); if (vg) dockEl.append(vg);
     if (room.isHost) {
       var waiting = (room.info && room.info.gather) > 0;
       dockEl.append(btn(waiting ? 'MENUNGGU SEMUA SIAP…' : 'TUNGGU SEMUA SIAP', null, !waiting, function () { if (!waiting) room.gather(pos()); }, 'block'));
@@ -540,7 +542,7 @@ function createPlayer(opts) {
           lastReactId = rt;
         }
       }
-      var mk = room.members.map(function (m) { return m.uid + m.buf + m.voice + m.mic; }).join() + (room.info ? room.info.gather : '');
+      var mk = room.members.map(function (m) { return m.uid + m.buf + m.voice + m.mic + m.cam; }).join() + (room.info ? room.info.gather : '') + room.camOn + Object.keys(room.videos).join();
       if (mk !== lastMembersKey) { lastMembersKey = mk; if (dockEl) renderDock(); renderCtl(); renderGather(); }
       // sinkron dari pb orang lain
       var st = room.stamp(room.pb);

@@ -59,6 +59,52 @@ fun rememberMicAction(room: NobarRoom): () -> Unit {
     }
 }
 
+/** Aksi tombol kamera (video call): minta izin kamera + mik bila perlu, lalu nyalakan/matikan kamera. */
+@Composable
+fun rememberCamAction(room: NobarRoom): () -> Unit {
+    val ctx = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r -> if (r.values.all { it }) room.enableCam() }
+    return {
+        if (room.camOn) room.disableCam()
+        else {
+            val need = listOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO).filter { ContextCompat.checkSelfPermission(ctx, it) != PackageManager.PERMISSION_GRANTED }
+            if (need.isEmpty()) room.enableCam() else launcher.launch(need.toTypedArray())
+        }
+    }
+}
+
+@Composable
+private fun VideoTile(track: org.webrtc.VideoTrack, mirror: Boolean, label: String, modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current
+    val view = remember(track) {
+        org.webrtc.SurfaceViewRenderer(ctx).apply {
+            init(Rtc.egl.eglBaseContext, null)
+            setMirror(mirror)
+            setScalingType(org.webrtc.RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+        }
+    }
+    DisposableEffect(view) {
+        track.addSink(view)
+        onDispose { runCatching { track.removeSink(view) }; view.release() }
+    }
+    Box(modifier.clip(RoundedCornerShape(10.dp)).background(Color.Black)) {
+        androidx.compose.ui.viewinterop.AndroidView({ view }, Modifier.fillMaxSize())
+        Text(label, color = Color.White, fontSize = 11.sp, maxLines = 1, modifier = Modifier.align(Alignment.BottomStart).background(Color.Black.copy(alpha = .5f)).padding(horizontal = 6.dp, vertical = 2.dp))
+    }
+}
+
+/** Deretan video call: kamera sendiri + peserta yang menyalakan kamera. Tidak tampil bila tak ada video. */
+@Composable
+fun VideoStrip(room: NobarRoom, modifier: Modifier = Modifier) {
+    val remote = room.members.filter { it.cam && it.uid != room.me && room.videos[it.uid] != null }
+    val mine = room.localVideo
+    if (remote.isEmpty() && mine == null) return
+    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        mine?.let { VideoTile(it, true, "Kamu", Modifier.size(120.dp, 90.dp)) }
+        remote.forEach { m -> key(m.uid) { room.videos[m.uid]?.let { VideoTile(it, false, m.name, Modifier.size(120.dp, 90.dp)) } } }
+    }
+}
+
 @Composable
 private fun TextInput(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier = Modifier, caps: Boolean = false, focus: androidx.compose.ui.focus.FocusRequester? = null, onDone: () -> Unit = {}) {
     Box(modifier.clip(RoundedCornerShape(12.dp)).background(C.SurfaceHigh).padding(horizontal = 14.dp, vertical = 12.dp)) {
@@ -81,24 +127,50 @@ fun ChatBox(room: NobarRoom, modifier: Modifier = Modifier, size: Int = 15) {
     val fr = remember { androidx.compose.ui.focus.FocusRequester() }
     val kb = LocalSoftwareKeyboardController.current
     // Setelah kirim, kolom tulis tetap fokus dan keyboard tetap terbuka
+    var replyTo by remember { mutableStateOf<NbMsg?>(null) }
     val send: () -> Unit = {
-        if (draft.isNotBlank()) { room.send(draft); draft = "" }
+        if (draft.isNotBlank()) { room.send(draft, replyTo); draft = ""; replyTo = null }
         runCatching { fr.requestFocus() }
         kb?.show()
     }
     val listState = rememberLazyListState()
-    LaunchedEffect(room.chat.lastOrNull()?.id) { if (room.chat.isNotEmpty()) listState.animateScrollToItem(room.chat.size - 1) }
+    // reverseLayout: pesan terbaru selalu menempel di dasar; item 0 = terbaru
+    LaunchedEffect(room.chat.lastOrNull()?.id) { listState.scrollToItem(0) }
     Column(modifier) {
-        LazyColumn(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(12.dp)).background(C.Surface).padding(12.dp), state = listState) {
-            if (room.chat.isEmpty()) item { Text("Belum ada pesan. Sapa temanmu!", color = C.Subtle, fontSize = size.sp) }
-            items(room.chat, key = { it.id }) { m ->
-                Text(
-                    androidx.compose.ui.text.buildAnnotatedString {
-                        withStyle(androidx.compose.ui.text.SpanStyle(color = if (m.uid == room.me) C.Aqua else C.Gold, fontWeight = FontWeight.Bold)) { append(m.name + "  ") }
-                        withStyle(androidx.compose.ui.text.SpanStyle(color = Color.White)) { append(m.text) }
-                    },
-                    fontSize = size.sp, lineHeight = (size + 5).sp, modifier = Modifier.padding(vertical = 3.dp),
-                )
+        LazyColumn(
+            Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(12.dp)).background(C.Surface).padding(horizontal = 10.dp),
+            state = listState, reverseLayout = true, verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(vertical = 10.dp),
+        ) {
+            items(room.chat.asReversed(), key = { it.id }) { m ->
+                val mine = m.uid == room.me
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
+                    Column(
+                        Modifier.widthIn(max = 240.dp)
+                            .clip(RoundedCornerShape(14.dp, 14.dp, if (mine) 4.dp else 14.dp, if (mine) 14.dp else 4.dp))
+                            .background(if (mine) C.Aqua.copy(alpha = .22f) else C.SurfaceHigh)
+                            .clickable { replyTo = m }.padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        if (!mine) Text(m.name, color = C.Gold, fontWeight = FontWeight.Bold, fontSize = (size - 3).sp)
+                        if (m.q.isNotEmpty()) Row(Modifier.padding(vertical = 3.dp).clip(RoundedCornerShape(6.dp)).background(Color.Black.copy(alpha = .25f)).height(IntrinsicSize.Min)) {
+                            Box(Modifier.width(3.dp).fillMaxHeight().background(C.Aqua))
+                            Column(Modifier.padding(6.dp)) {
+                                Text(m.qn, color = C.Aqua, fontWeight = FontWeight.Bold, fontSize = (size - 4).sp, maxLines = 1)
+                                Text(m.qm, color = C.Muted, fontSize = (size - 3).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                        Text(m.text, color = Color.White, fontSize = size.sp, lineHeight = (size + 5).sp)
+                    }
+                }
+            }
+            if (room.chat.isEmpty()) item { Text("Belum ada pesan. Sapa temanmu! Ketuk pesan untuk membalas.", color = C.Subtle, fontSize = size.sp) }
+        }
+        replyTo?.let { r ->
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(10.dp)).background(C.SurfaceHigh).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Membalas ${r.name}", color = C.Aqua, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Text(r.text, color = C.Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                IconBtn(Ic.Close, "Batal membalas", { replyTo = null }, size = 32.dp)
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -208,6 +280,7 @@ fun ChatDock(room: NobarRoom, onClose: () -> Unit, onGather: () -> Unit = {}, mo
         }
         Spacer(Modifier.height(8.dp))
         MemberStrip(room)
+        if (room.camOn || room.videos.isNotEmpty()) { Spacer(Modifier.height(8.dp)); VideoStrip(room) }
         if (room.isHost) {
             Spacer(Modifier.height(8.dp))
             val waiting = (room.info?.gather ?: 0L) > 0
@@ -273,6 +346,7 @@ private fun SmallChip(text: String, active: Boolean, icon: androidx.compose.ui.g
 @Composable
 fun LobbyPanel(room: NobarRoom, modifier: Modifier = Modifier) {
     val mic = rememberMicAction(room)
+    val cam = rememberCamAction(room)
     Column(modifier) {
         Text("${room.members.size}/$MAX_MEMBERS bergabung", color = C.Muted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
@@ -280,11 +354,13 @@ fun LobbyPanel(room: NobarRoom, modifier: Modifier = Modifier) {
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             SmallChip(if (!room.voiceOn) "Nyalakan suara" else if (room.micOn) "Mik aktif" else "Mik mati", room.voiceOn && room.micOn, if (room.voiceOn && room.micOn) Ic.Mic else Ic.MicOff) { mic() }
+            SmallChip(if (room.camOn) "Kamera aktif" else "Nyalakan kamera", room.camOn, if (room.camOn) Ic.Cam else Ic.CamOff) { cam() }
             if (room.voiceOn) SmallChip("Matikan suara", false) { room.disableVoice() }
             if (room.isHost) SmallChip(if (room.info?.ctl == "all") "Semua boleh kendali: ya" else "Semua boleh kendali: tidak", room.info?.ctl == "all") { room.setControl(room.info?.ctl != "all") }
             else Text(if (room.info?.ctl == "all") "Semua boleh mengendalikan" else "Hanya host yang mengendalikan", color = C.Subtle, fontSize = 12.sp)
         }
         if (room.voiceError.isNotEmpty()) Text(room.voiceError, color = Color(0xFFFF8A80), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        if (room.camOn || room.videos.isNotEmpty()) { Spacer(Modifier.height(8.dp)); VideoStrip(room) }
         Spacer(Modifier.height(10.dp))
         ChatBox(room, Modifier.weight(1f), size = 16)
     }
