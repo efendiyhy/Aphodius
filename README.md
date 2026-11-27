@@ -19,7 +19,7 @@
 
 ## Apa itu Aphodius?
 
-Aphodius adalah aplikasi nonton untuk Android. Koleksi film dan series ditampilkan seperti aplikasi streaming pada umumnya: ada poster, sinopsis, rating, dan kategori. Cukup buka, pilih judul, lalu putar layar penuh.
+Aphodius adalah aplikasi nonton untuk Android dan Windows. Koleksi film dan series ditampilkan seperti aplikasi streaming pada umumnya: ada poster, sinopsis, rating, dan kategori. Cukup buka, pilih judul, lalu putar layar penuh.
 
 Daftar film **selalu diperbarui otomatis**. Judul baru yang ditambahkan akan muncul sendiri di aplikasimu, tanpa perlu memasang ulang.
 
@@ -61,8 +61,8 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 
 ## Cara Memasang
 
-1. Buka halaman **[Rilis](https://github.com/efendiyhy/Aphodius/releases/latest)** lalu unduh file `.apk` terbaru.
-2. Buka file tersebut di HP Android. Jika diminta, izinkan *pasang dari sumber ini*.
+1. Buka halaman **[Rilis](https://github.com/efendiyhy/Aphodius/releases/latest)** lalu unduh file `.apk` terbaru (atau paket Windows).
+2. Buka file tersebut di perangkat kamu. Jika diminta di Android, izinkan *pasang dari sumber ini*.
 3. Buka Aphodius, isi nama sapaan, dan selamat menonton.
 
 > Butuh Android 8.0 atau lebih baru.
@@ -70,8 +70,9 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 ## Statistik Unduhan
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#FFFFFF', 'mainBkg': '#FFFFFF', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#111111', 'primaryBorderColor': '#111111', 'lineColor': '#FFFFFF', 'textColor': '#111111'}}}%%
 xychart-beta
     title "Grafik Total Unduhan terhadap Waktu"
-    x-axis "Waktu" ["v1.2", "v1.4", "v1.6", "v1.7", "v1.9", "v1.10", "v1.11"]
+    x-axis "Tanggal" ["2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11"]
     y-axis "Jumlah Download" 0 --> 1000
-    line [50, 140, 260, 410, 600, 780, 950]
+    line [50, 140, 260, 410, 600, 780]
