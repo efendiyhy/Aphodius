@@ -70,7 +70,7 @@ Aplikasi memberi tahu saat ada versi baru. Unduh dan pasang langsung dari dalam 
 ## Statistik Unduhan
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'background': '#FFFFFF', 'mainBkg': '#FFFFFF', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#111111', 'primaryBorderColor': '#111111', 'lineColor': '#FFFFFF', 'textColor': '#111111'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#FFFFFF', 'mainBkg': '#FFFFFF', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#111111', 'primaryBorderColor': '#111111', 'lineColor': '#000000', 'textColor': '#111111', 'xyChart': { 'plotColor': '#FFFFFF', 'titleColor': '#111111', 'xAxisLabelColor': '#111111', 'xAxisTitleColor': '#111111', 'xAxisTickColor': '#111111', 'xAxisLineColor': '#111111', 'yAxisLabelColor': '#111111', 'yAxisTitleColor': '#111111', 'yAxisTickColor': '#111111', 'yAxisLineColor': '#111111' }}}}%%
 xychart-beta
     title "Grafik Total Unduhan terhadap Waktu"
     x-axis "Tanggal" ["2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11"]
