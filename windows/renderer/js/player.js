@@ -485,10 +485,18 @@ function createPlayer(opts) {
   function render() { renderCenter(); renderCtl(); renderDock(); }
 
   /* ---- nobar: dock chat, chat melayang, reaksi ---- */
-  var dockEl = null, chatRef = null, floatEl = null;
+  var dockEl = null, chatRef = null, floatEl = null, vidEl = null;
+  /** Video call melayang di atas pemutar saat panel chat tertutup (saat terbuka, video ada di panel). */
+  function renderVideos() {
+    if (vidEl) { vidEl.remove(); vidEl = null; }
+    if (!room || chatOpen) return;
+    var vg = videoGrid(room); if (!vg) return;
+    vidEl = h('div', { class: 'vfloat' }, vg); stage.append(vidEl);
+  }
   function renderDock() {
     if (!room) return;
     if (dockEl) { dockEl.remove(); dockEl = null; chatRef = null; }
+    renderVideos();
     if (!chatOpen) return;
     dockEl = h('div', { class: 'dock' });
     dockEl.append(h('div', { style: { display: 'flex', alignItems: 'center' } }, h('div', { style: { flex: 1 } }, h('b', {}, 'Nobar · ' + room.code), h('div', { style: { color: 'var(--muted)', fontSize: '12px' } }, room.members.length + ' dari ' + MAX_MEMBERS + ' bergabung')),
@@ -543,7 +551,7 @@ function createPlayer(opts) {
         }
       }
       var mk = room.members.map(function (m) { return m.uid + m.buf + m.voice + m.mic + m.cam; }).join() + (room.info ? room.info.gather : '') + room.camOn + Object.keys(room.videos).join();
-      if (mk !== lastMembersKey) { lastMembersKey = mk; if (dockEl) renderDock(); renderCtl(); renderGather(); }
+      if (mk !== lastMembersKey) { lastMembersKey = mk; if (dockEl) renderDock(); else renderVideos(); renderCtl(); renderGather(); }
       // sinkron dari pb orang lain
       var st = room.stamp(room.pb);
       if ((st !== lastStamp || room.pb.playing !== lastPlaying) && phase === 1 && room.pb.by !== room.me) {

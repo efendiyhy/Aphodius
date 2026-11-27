@@ -496,6 +496,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
     private var factory: PeerConnectionFactory? = null
     private var source: AudioSource? = null
     private var track: AudioTrack? = null
+    @Volatile private var wantCam = false
     private var vTrack: VideoTrack? = null
     private var vSource: VideoSource? = null
     private var capturer: CameraVideoCapturer? = null
@@ -557,6 +558,7 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
                 am.mode = AudioManager.MODE_IN_COMMUNICATION
                 am.isSpeakerphoneOn = !hasHeadset()
                 current.filter { it.uid != room.me && it.voice }.forEach { connect(it.uid) }
+                if (wantCam) { wantCam = false; setCam(true) }
                 CrashLog.clear(ctx)
             }.onFailure { room.voiceFailed(it.message ?: it.javaClass.simpleName) }
         }
@@ -575,7 +577,8 @@ class VoiceEngine(private val ctx: Context, private val room: NobarRoom) {
             if (stopped) return@post
             if (on && vTrack == null) {
                 try {
-                    val f = factory ?: return@post
+                    // start() belum selesai (kamera ditekan duluan sebelum suara siap): nyalakan setelah start()
+                    val f = factory ?: run { wantCam = true; return@post }
                     val en = Camera2Enumerator(ctx)
                     val name = en.deviceNames.firstOrNull { en.isFrontFacing(it) } ?: en.deviceNames.firstOrNull() ?: error("kamera tidak ditemukan")
                     val th = SurfaceTextureHelper.create("cam", Rtc.egl.eglBaseContext)
